@@ -26,15 +26,14 @@
 
 using System;
 using System.IO;
-#if ENABLE_NATIVE_DKIM
-using System.Security.Cryptography;
-#endif
+using System.Linq;
+using System.Text;
+using System.Collections.Generic;
 
-using Org.BouncyCastle.Asn1;
-using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Crypto;
-using Org.BouncyCastle.OpenSsl;
-using Org.BouncyCastle.Security;
+
+using MimeKit.IO;
+using MimeKit.Utils;
 
 namespace MimeKit.Cryptography {
 	/// <summary>
@@ -43,13 +42,22 @@ namespace MimeKit.Cryptography {
 	/// <remarks>
 	/// A DKIM signer.
 	/// </remarks>
-	public class DkimSigner
+	/// <example>
+	/// <code language="c#" source="Examples\DkimExamples.cs" region="DkimSign" />
+	/// </example>
+	public class DkimSigner : DkimSignerBase
 	{
+		static readonly string[] DkimShouldNotInclude = { "return-path", "received", "comments", "keywords", "bcc", "resent-bcc", "dkim-signature" };
+
 		/// <summary>
 		/// Initializes a new instance of the <see cref="T:MimeKit.Cryptography.DkimSigner"/> class.
 		/// </summary>
 		/// <remarks>
-		/// Creates a new <see cref="DkimSigner"/>.
+		/// <para>Creates a new <see cref="DkimSigner"/>.</para>
+		/// <note type="security">Due to the recognized weakness of the SHA-1 hash algorithm
+		/// and the wide availability of the SHA-256 hash algorithm (it has been a required
+		/// part of DKIM since it was originally standardized in 2007), it is recommended
+		/// that <see cref="DkimSignatureAlgorithm.RsaSha1"/> NOT be used.</note>
 		/// </remarks>
 		/// <param name="domain">The domain that the signer represents.</param>
 		/// <param name="selector">The selector subdividing the domain.</param>
@@ -59,24 +67,19 @@ namespace MimeKit.Cryptography {
 		/// <para>-or-</para>
 		/// <para><paramref name="selector"/> is <c>null</c>.</para>
 		/// </exception>
-		protected DkimSigner (string domain, string selector, DkimSignatureAlgorithm algorithm = DkimSignatureAlgorithm.RsaSha256)
+		protected DkimSigner (string domain, string selector, DkimSignatureAlgorithm algorithm = DkimSignatureAlgorithm.RsaSha256) : base (domain, selector, algorithm)
 		{
-			if (domain == null)
-				throw new ArgumentNullException (nameof (domain));
-
-			if (selector == null)
-				throw new ArgumentNullException (nameof (selector));
-
-			SignatureAlgorithm = algorithm;
-			Selector = selector;
-			Domain = domain;
 		}
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.DkimSigner"/> class.
 		/// </summary>
 		/// <remarks>
-		/// Creates a new <see cref="DkimSigner"/>.
+		/// <para>Creates a new <see cref="DkimSigner"/>.</para>
+		/// <note type="security">Due to the recognized weakness of the SHA-1 hash algorithm
+		/// and the wide availability of the SHA-256 hash algorithm (it has been a required
+		/// part of DKIM since it was originally standardized in 2007), it is recommended
+		/// that <see cref="DkimSignatureAlgorithm.RsaSha1"/> NOT be used.</note>
 		/// </remarks>
 		/// <param name="key">The signer's private key.</param>
 		/// <param name="domain">The domain that the signer represents.</param>
@@ -92,51 +95,15 @@ namespace MimeKit.Cryptography {
 		/// <exception cref="System.ArgumentException">
 		/// <paramref name="key"/> is not a private key.
 		/// </exception>
-		public DkimSigner (AsymmetricKeyParameter key, string domain, string selector, DkimSignatureAlgorithm algorithm = DkimSignatureAlgorithm.RsaSha256)
+		public DkimSigner (AsymmetricKeyParameter key, string domain, string selector, DkimSignatureAlgorithm algorithm = DkimSignatureAlgorithm.RsaSha256) : this (domain, selector, algorithm)
 		{
 			if (key == null)
 				throw new ArgumentNullException (nameof (key));
 
-			if (domain == null)
-				throw new ArgumentNullException (nameof (domain));
-
-			if (selector == null)
-				throw new ArgumentNullException (nameof (selector));
-
 			if (!key.IsPrivate)
 				throw new ArgumentException ("The key must be a private key.", nameof (key));
 
-			SignatureAlgorithm = algorithm;
-			Selector = selector;
 			PrivateKey = key;
-			Domain = domain;
-		}
-
-		static AsymmetricKeyParameter LoadPrivateKey (Stream stream)
-		{
-			AsymmetricKeyParameter key = null;
-
-			using (var reader = new StreamReader (stream)) {
-				var pem = new PemReader (reader);
-
-				var keyObject = pem.ReadObject ();
-
-				if (keyObject != null) {
-					key = keyObject as AsymmetricKeyParameter;
-
-					if (key == null) {
-						var pair = keyObject as AsymmetricCipherKeyPair;
-
-						if (pair != null)
-							key = pair.Private;
-					}
-				}
-			}
-
-			if (key == null || !key.IsPrivate)
-				throw new FormatException ("Private key not found.");
-
-			return key;
 		}
 
 #if !PORTABLE
@@ -144,8 +111,15 @@ namespace MimeKit.Cryptography {
 		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.DkimSigner"/> class.
 		/// </summary>
 		/// <remarks>
-		/// Creates a new <see cref="DkimSigner"/>.
+		/// <para>Creates a new <see cref="DkimSigner"/>.</para>
+		/// <note type="security">Due to the recognized weakness of the SHA-1 hash algorithm
+		/// and the wide availability of the SHA-256 hash algorithm (it has been a required
+		/// part of DKIM since it was originally standardized in 2007), it is recommended
+		/// that <see cref="DkimSignatureAlgorithm.RsaSha1"/> NOT be used.</note>
 		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\DkimExamples.cs" region="DkimSign" />
+		/// </example>
 		/// <param name="fileName">The file containing the private key.</param>
 		/// <param name="domain">The domain that the signer represents.</param>
 		/// <param name="selector">The selector subdividing the domain.</param>
@@ -177,7 +151,7 @@ namespace MimeKit.Cryptography {
 		/// <exception cref="System.IO.IOException">
 		/// An I/O error occurred.
 		/// </exception>
-		public DkimSigner (string fileName, string domain, string selector, DkimSignatureAlgorithm algorithm = DkimSignatureAlgorithm.RsaSha256)
+		public DkimSigner (string fileName, string domain, string selector, DkimSignatureAlgorithm algorithm = DkimSignatureAlgorithm.RsaSha256) : this (domain, selector, algorithm)
 		{
 			if (fileName == null)
 				throw new ArgumentNullException (nameof (fileName));
@@ -185,18 +159,8 @@ namespace MimeKit.Cryptography {
 			if (fileName.Length == 0)
 				throw new ArgumentException ("The file name cannot be empty.", nameof (fileName));
 
-			if (domain == null)
-				throw new ArgumentNullException (nameof (domain));
-
-			if (selector == null)
-				throw new ArgumentNullException (nameof (selector));
-
 			using (var stream = File.OpenRead (fileName))
 				PrivateKey = LoadPrivateKey (stream);
-
-			SignatureAlgorithm = algorithm;
-			Selector = selector;
-			Domain = domain;
 		}
 #endif
 
@@ -204,7 +168,11 @@ namespace MimeKit.Cryptography {
 		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.DkimSigner"/> class.
 		/// </summary>
 		/// <remarks>
-		/// Creates a new <see cref="DkimSigner"/>.
+		/// <para>Creates a new <see cref="DkimSigner"/>.</para>
+		/// <note type="security">Due to the recognized weakness of the SHA-1 hash algorithm
+		/// and the wide availability of the SHA-256 hash algorithm (it has been a required
+		/// part of DKIM since it was originally standardized in 2007), it is recommended
+		/// that <see cref="DkimSignatureAlgorithm.RsaSha1"/> NOT be used.</note>
 		/// </remarks>
 		/// <param name="stream">The stream containing the private key.</param>
 		/// <param name="domain">The domain that the signer represents.</param>
@@ -223,54 +191,12 @@ namespace MimeKit.Cryptography {
 		/// <exception cref="System.IO.IOException">
 		/// An I/O error occurred.
 		/// </exception>
-		public DkimSigner (Stream stream, string domain, string selector, DkimSignatureAlgorithm algorithm = DkimSignatureAlgorithm.RsaSha256)
+		public DkimSigner (Stream stream, string domain, string selector, DkimSignatureAlgorithm algorithm = DkimSignatureAlgorithm.RsaSha256) : this (domain, selector, algorithm)
 		{
 			if (stream == null)
 				throw new ArgumentNullException (nameof (stream));
 
-			if (domain == null)
-				throw new ArgumentNullException (nameof (domain));
-
-			if (selector == null)
-				throw new ArgumentNullException (nameof (selector));
-
 			PrivateKey = LoadPrivateKey (stream);
-			SignatureAlgorithm = algorithm;
-			Selector = selector;
-			Domain = domain;
-		}
-
-		/// <summary>
-		/// Gets the private key.
-		/// </summary>
-		/// <remarks>
-		/// The private key used for signing.
-		/// </remarks>
-		/// <value>The private key.</value>
-		protected AsymmetricKeyParameter PrivateKey {
-			get; set;
-		}
-
-		/// <summary>
-		/// Get the domain that the signer represents.
-		/// </summary>
-		/// <remarks>
-		/// Gets the domain that the signer represents.
-		/// </remarks>
-		/// <value>The domain.</value>
-		public string Domain {
-			get; private set;
-		}
-
-		/// <summary>
-		/// Get the selector subdividing the domain.
-		/// </summary>
-		/// <remarks>
-		/// Gets the selector subdividing the domain.
-		/// </remarks>
-		/// <value>The selector.</value>
-		public string Selector {
-			get; private set;
 		}
 
 		/// <summary>
@@ -279,19 +205,11 @@ namespace MimeKit.Cryptography {
 		/// <remarks>
 		/// Gets or sets the agent or user identifier.
 		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\DkimExamples.cs" region="DkimSign" />
+		/// </example>
 		/// <value>The agent or user identifier.</value>
 		public string AgentOrUserIdentifier {
-			get; set;
-		}
-
-		/// <summary>
-		/// Get or set the algorithm to use for signing.
-		/// </summary>
-		/// <remarks>
-		/// Gets or sets the algorithm to use for signing.
-		/// </remarks>
-		/// <value>The signature algorithm.</value>
-		public DkimSignatureAlgorithm SignatureAlgorithm {
 			get; set;
 		}
 
@@ -305,107 +223,263 @@ namespace MimeKit.Cryptography {
 		/// query method is of the form "type[/options]", where the syntax and
 		/// semantics of the options depend on the type and specified options.</para>
 		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\DkimExamples.cs" region="DkimSign" />
+		/// </example>
 		/// <value>The public key query method.</value>
 		public string QueryMethod {
 			get; set;
 		}
 
 		/// <summary>
-		/// Get the digest signing context for a specified signature algorithm.
+		/// Get the timestamp value.
 		/// </summary>
 		/// <remarks>
-		/// Gets the digest signing context for the specified signature algorithm.
+		/// Gets the timestamp to use as the <c>t=</c> value in the DKIM-Signature header.
 		/// </remarks>
-		/// <returns>The digest signer.</returns>
-		public virtual ISigner DigestSigner {
-			get {
-#if ENABLE_NATIVE_DKIM
-				return new SystemSecuritySigner (SignatureAlgorithm, PrivateKey.AsAsymmetricAlgorithm ());
-#else
-				DerObjectIdentifier id;
-
-				if (SignatureAlgorithm == DkimSignatureAlgorithm.RsaSha256)
-					id = PkcsObjectIdentifiers.Sha256WithRsaEncryption;
-				else
-					id = PkcsObjectIdentifiers.Sha1WithRsaEncryption;
-
-				var signer = SignerUtilities.GetSigner (id);
-
-				signer.Init (true, PrivateKey);
-
-				return signer;
-#endif
-			}
-		}
-	}
-
-#if ENABLE_NATIVE_DKIM
-	class SystemSecuritySigner : ISigner
-	{
-		readonly RSACryptoServiceProvider rsa;
-		readonly HashAlgorithm hash;
-		readonly string oid;
-
-		public SystemSecuritySigner (DkimSignatureAlgorithm algorithm, AsymmetricAlgorithm key)
+		/// <returns>A value representing the timestamp value.</returns>
+		protected virtual long GetTimestamp ()
 		{
-			rsa = key as RSACryptoServiceProvider;
+			return (long) (DateTime.UtcNow - DateUtils.UnixEpoch).TotalSeconds;
+		}
 
-			switch (algorithm) {
+		void DkimSign (FormatOptions options, MimeMessage message, IList<string> headers)
+		{
+			var value = new StringBuilder ("v=1");
+			var t = GetTimestamp ();
+			byte[] signature, hash;
+			Header dkim;
+
+			options = options.Clone ();
+			options.NewLineFormat = NewLineFormat.Dos;
+
+			switch (SignatureAlgorithm) {
+			case DkimSignatureAlgorithm.Ed25519Sha256:
+				value.Append ("; a=ed25519-sha256");
+				break;
 			case DkimSignatureAlgorithm.RsaSha256:
-				oid = SecureMimeContext.GetDigestOid (DigestAlgorithm.Sha256);
-				AlgorithmName = "RSASHA256";
-				hash = SHA256.Create ();
+				value.Append ("; a=rsa-sha256");
 				break;
 			default:
-				oid = SecureMimeContext.GetDigestOid (DigestAlgorithm.Sha1);
-				AlgorithmName = "RSASHA1";
-				hash = SHA1.Create ();
+				value.Append ("; a=rsa-sha1");
 				break;
+			}
+
+			value.AppendFormat ("; d={0}; s={1}", Domain, Selector);
+			value.AppendFormat ("; c={0}/{1}",
+				HeaderCanonicalizationAlgorithm.ToString ().ToLowerInvariant (),
+				BodyCanonicalizationAlgorithm.ToString ().ToLowerInvariant ());
+			if (!string.IsNullOrEmpty (QueryMethod))
+				value.AppendFormat ("; q={0}", QueryMethod);
+			if (!string.IsNullOrEmpty (AgentOrUserIdentifier))
+				value.AppendFormat ("; i={0}", AgentOrUserIdentifier);
+			value.AppendFormat ("; t={0}", t);
+
+			using (var stream = new DkimSignatureStream (CreateSigningContext ())) {
+				using (var filtered = new FilteredStream (stream)) {
+					filtered.Add (options.CreateNewLineFilter ());
+
+					// write the specified message headers
+					DkimVerifierBase.WriteHeaders (options, message, headers, HeaderCanonicalizationAlgorithm, filtered);
+
+					value.AppendFormat ("; h={0}", string.Join (":", headers.ToArray ()));
+
+					hash = message.HashBody (options, SignatureAlgorithm, BodyCanonicalizationAlgorithm, -1);
+					value.AppendFormat ("; bh={0}", Convert.ToBase64String (hash));
+					value.Append ("; b=");
+
+					dkim = new Header (HeaderId.DkimSignature, value.ToString ());
+					message.Headers.Insert (0, dkim);
+
+					switch (HeaderCanonicalizationAlgorithm) {
+					case DkimCanonicalizationAlgorithm.Relaxed:
+						DkimVerifierBase.WriteHeaderRelaxed (options, filtered, dkim, true);
+						break;
+					default:
+						DkimVerifierBase.WriteHeaderSimple (options, filtered, dkim, true);
+						break;
+					}
+
+					filtered.Flush ();
+				}
+
+				signature = stream.GenerateSignature ();
+
+				dkim.Value += Convert.ToBase64String (signature);
 			}
 		}
 
-		public string AlgorithmName {
-			get; private set;
+		/// <summary>
+		/// Digitally sign the message using a DomainKeys Identified Mail (DKIM) signature.
+		/// </summary>
+		/// <remarks>
+		/// Digitally signs the message using a DomainKeys Identified Mail (DKIM) signature.
+		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\DkimExamples.cs" region="DkimSign" />
+		/// </example>
+		/// <param name="options">The formatting options.</param>
+		/// <param name="message">The message to sign.</param>
+		/// <param name="headers">The list of header fields to sign.</param>
+		/// <exception cref="System.ArgumentNullException">
+		/// <para><paramref name="options"/> is <c>null</c>.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="message"/> is <c>null</c>.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="headers"/> is <c>null</c>.</para>
+		/// </exception>
+		/// <exception cref="System.ArgumentException">
+		/// <para><paramref name="headers"/> does not contain the 'From' header.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="headers"/> contains one or more of the following headers: Return-Path,
+		/// Received, Comments, Keywords, Bcc, Resent-Bcc, or DKIM-Signature.</para>
+		/// </exception>
+		public void Sign (FormatOptions options, MimeMessage message, IList<string> headers)
+		{
+			if (options == null)
+				throw new ArgumentNullException (nameof (options));
+
+			if (message == null)
+				throw new ArgumentNullException (nameof (message));
+
+			if (headers == null)
+				throw new ArgumentNullException (nameof (headers));
+
+			var fields = new string[headers.Count];
+			var containsFrom = false;
+
+			for (int i = 0; i < headers.Count; i++) {
+				if (headers[i] == null)
+					throw new ArgumentException ("The list of headers cannot contain null.", nameof (headers));
+
+				if (headers[i].Length == 0)
+					throw new ArgumentException ("The list of headers cannot contain empty string.", nameof (headers));
+
+				fields[i] = headers[i].ToLowerInvariant ();
+
+				if (DkimShouldNotInclude.Contains (fields[i]))
+					throw new ArgumentException (string.Format ("The list of headers to sign SHOULD NOT include the '{0}' header.", headers[i]), nameof (headers));
+
+				if (fields[i] == "from")
+					containsFrom = true;
+			}
+
+			if (!containsFrom)
+				throw new ArgumentException ("The list of headers to sign MUST include the 'From' header.", nameof (headers));
+
+			DkimSign (options, message, fields);
 		}
 
-		public void BlockUpdate (byte[] input, int inOff, int length)
+		/// <summary>
+		/// Digitally sign the message using a DomainKeys Identified Mail (DKIM) signature.
+		/// </summary>
+		/// <remarks>
+		/// Digitally signs the message using a DomainKeys Identified Mail (DKIM) signature.
+		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\DkimExamples.cs" region="DkimSign" />
+		/// </example>
+		/// <param name="message">The message to sign.</param>
+		/// <param name="headers">The headers to sign.</param>
+		/// <exception cref="System.ArgumentNullException">
+		/// <para><paramref name="message"/> is <c>null</c>.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="headers"/> is <c>null</c>.</para>
+		/// </exception>
+		/// <exception cref="System.ArgumentException">
+		/// <para><paramref name="headers"/> does not contain the 'From' header.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="headers"/> contains one or more of the following headers: Return-Path,
+		/// Received, Comments, Keywords, Bcc, Resent-Bcc, or DKIM-Signature.</para>
+		/// </exception>
+		public void Sign (MimeMessage message, IList<string> headers)
 		{
-			hash.TransformBlock (input, inOff, length, null, 0);
+			Sign (FormatOptions.Default, message, headers);
 		}
 
-		public byte[] GenerateSignature ()
+		/// <summary>
+		/// Digitally sign the message using a DomainKeys Identified Mail (DKIM) signature.
+		/// </summary>
+		/// <remarks>
+		/// Digitally signs the message using a DomainKeys Identified Mail (DKIM) signature.
+		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\DkimExamples.cs" region="DkimSign" />
+		/// </example>
+		/// <param name="options">The formatting options.</param>
+		/// <param name="message">The message to sign.</param>
+		/// <param name="headers">The list of header fields to sign.</param>
+		/// <exception cref="System.ArgumentNullException">
+		/// <para><paramref name="options"/> is <c>null</c>.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="message"/> is <c>null</c>.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="headers"/> is <c>null</c>.</para>
+		/// </exception>
+		/// <exception cref="System.ArgumentException">
+		/// <para><paramref name="headers"/> does not contain the 'From' header.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="headers"/> contains one or more of the following headers: Return-Path,
+		/// Received, Comments, Keywords, Bcc, Resent-Bcc, or DKIM-Signature.</para>
+		/// </exception>
+		public void Sign (FormatOptions options, MimeMessage message, IList<HeaderId> headers)
 		{
-			hash.TransformFinalBlock (new byte[0], 0, 0);
+			if (options == null)
+				throw new ArgumentNullException (nameof (options));
 
-			return rsa.SignHash (hash.Hash, oid);
+			if (message == null)
+				throw new ArgumentNullException (nameof (message));
+
+			if (headers == null)
+				throw new ArgumentNullException (nameof (headers));
+
+			var fields = new string[headers.Count];
+			var containsFrom = false;
+
+			for (int i = 0; i < headers.Count; i++) {
+				if (headers[i] == HeaderId.Unknown)
+					throw new ArgumentException ("The list of headers to sign cannot include the 'Unknown' header.", nameof (headers));
+
+				fields[i] = headers[i].ToHeaderName ().ToLowerInvariant ();
+
+				if (DkimShouldNotInclude.Contains (fields[i]))
+					throw new ArgumentException (string.Format ("The list of headers to sign SHOULD NOT include the '{0}' header.", headers[i].ToHeaderName ()), nameof (headers));
+
+				if (headers[i] == HeaderId.From)
+					containsFrom = true;
+			}
+
+			if (!containsFrom)
+				throw new ArgumentException ("The list of headers to sign MUST include the 'From' header.", nameof (headers));
+
+			DkimSign (options, message, fields);
 		}
 
-		public void Init (bool forSigning, ICipherParameters parameters)
+		/// <summary>
+		/// Digitally sign the message using a DomainKeys Identified Mail (DKIM) signature.
+		/// </summary>
+		/// <remarks>
+		/// Digitally signs the message using a DomainKeys Identified Mail (DKIM) signature.
+		/// </remarks>
+		/// <example>
+		/// <code language="c#" source="Examples\DkimExamples.cs" region="DkimSign" />
+		/// </example>
+		/// <param name="message">The message to sign.</param>
+		/// <param name="headers">The headers to sign.</param>
+		/// <exception cref="System.ArgumentNullException">
+		/// <para><paramref name="message"/> is <c>null</c>.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="headers"/> is <c>null</c>.</para>
+		/// </exception>
+		/// <exception cref="System.ArgumentException">
+		/// <para><paramref name="headers"/> does not contain the 'From' header.</para>
+		/// <para>-or-</para>
+		/// <para><paramref name="headers"/> contains one or more of the following headers: Return-Path,
+		/// Received, Comments, Keywords, Bcc, Resent-Bcc, or DKIM-Signature.</para>
+		/// </exception>
+		public void Sign (MimeMessage message, IList<HeaderId> headers)
 		{
-			throw new NotImplementedException ();
-		}
-
-		public void Reset ()
-		{
-			hash.Initialize ();
-		}
-
-		public void Update (byte input)
-		{
-			hash.TransformBlock (new byte[] { input }, 0, 1, null, 0);
-		}
-
-		public bool VerifySignature (byte[] signature)
-		{
-			hash.TransformFinalBlock (new byte[0], 0, 0);
-
-			return rsa.VerifyHash (hash.Hash, oid, signature);
-		}
-
-		public void Dispose ()
-		{
-			rsa.Dispose ();
+			Sign (FormatOptions.Default, message, headers);
 		}
 	}
-#endif
 }

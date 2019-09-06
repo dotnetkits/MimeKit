@@ -33,6 +33,7 @@ using Encoding = Portable.Text.Encoding;
 #endif
 
 using MimeKit.Utils;
+using MimeKit.Cryptography;
 
 namespace MimeKit {
 	/// <summary>
@@ -290,12 +291,12 @@ namespace MimeKit {
 			Id = id;
 		}
 
-		internal Header (ParserOptions options, byte[] field, byte[] value)
+		internal Header (ParserOptions options, byte[] field, byte[] value, bool invalid)
 		{
 			var chars = new char[field.Length];
 			int count = 0;
 
-			while (count < field.Length && !field[count].IsBlank ()) {
+			while (count < field.Length && (invalid || !field[count].IsBlank ())) {
 				chars[count] = (char) field[count];
 				count++;
 			}
@@ -306,6 +307,7 @@ namespace MimeKit {
 
 			Field = new string (chars, 0, count);
 			Id = Field.ToHeaderId ();
+			IsInvalid = invalid;
 		}
 
 		internal Header (ParserOptions options, HeaderId id, string field, byte[] value)
@@ -326,7 +328,9 @@ namespace MimeKit {
 		/// <returns>A copy of the header with its current state.</returns>
 		public Header Clone ()
 		{
-			var header = new Header (Options, Id, Field, RawField, RawValue);
+			var header = new Header (Options, Id, Field, rawField, rawValue) {
+				IsInvalid = IsInvalid
+			};
 
 			// if the textValue has already been calculated, set it on the cloned header as well.
 			header.textValue = textValue;
@@ -368,6 +372,10 @@ namespace MimeKit {
 			get; private set;
 		}
 
+		internal bool IsInvalid {
+			get; private set;
+		}
+
 		/// <summary>
 		/// Gets the raw field name of the header.
 		/// </summary>
@@ -403,7 +411,7 @@ namespace MimeKit {
 		public string Value {
 			get {
 				if (textValue == null)
-					textValue = Unfold (Rfc2047.DecodeText (Options, RawValue));
+					textValue = Unfold (Rfc2047.DecodeText (Options, rawValue));
 
 				return textValue;
 			}
@@ -433,7 +441,7 @@ namespace MimeKit {
 			var options = Options.Clone ();
 			options.CharsetEncoding = encoding;
 
-			return Unfold (Rfc2047.DecodeText (options, RawValue));
+			return Unfold (Rfc2047.DecodeText (options, rawValue));
 		}
 
 		/// <summary>
@@ -666,6 +674,21 @@ namespace MimeKit {
 			return charset.GetBytes (encoded.ToString ());
 		}
 
+		static byte[] EncodeAuthenticationResultsHeader (ParserOptions options, FormatOptions format, Encoding charset, string field, string value)
+		{
+			var buffer = Encoding.UTF8.GetBytes (value);
+
+			if (!AuthenticationResults.TryParse (buffer, out AuthenticationResults authres))
+				return EncodeUnstructuredHeader (options, format, charset, field, value);
+
+			var encoded = new StringBuilder ();
+			int lineLength = field.Length + 1;
+
+			authres.Encode (format, encoded, lineLength);
+
+			return charset.GetBytes (encoded.ToString ());
+		}
+
 		static void EncodeDkimLongValue (FormatOptions format, StringBuilder encoded, ref int lineLength, string value)
 		{
 			int startIndex = 0;
@@ -716,7 +739,7 @@ namespace MimeKit {
 			}
 		}
 
-		static byte[] EncodeDkimSignatureHeader (ParserOptions options, FormatOptions format, Encoding charset, string field, string value)
+		static byte[] EncodeDkimOrArcSignatureHeader (ParserOptions options, FormatOptions format, Encoding charset, string field, string value)
 		{
 			var encoded = new StringBuilder ();
 			int lineLength = field.Length + 1;
@@ -995,8 +1018,13 @@ namespace MimeKit {
 				return EncodeContentDisposition (Options, format, encoding, Field, textValue);
 			case HeaderId.ContentType:
 				return EncodeContentType (Options, format, encoding, Field, textValue);
+			case HeaderId.ArcAuthenticationResults:
+			case HeaderId.AuthenticationResults:
+				return EncodeAuthenticationResultsHeader (Options, format, encoding, Field, textValue);
+			case HeaderId.ArcMessageSignature:
+			case HeaderId.ArcSeal:
 			case HeaderId.DkimSignature:
-				return EncodeDkimSignatureHeader (Options, format, encoding, Field, textValue);
+				return EncodeDkimOrArcSignatureHeader (Options, format, encoding, Field, textValue);
 			default:
 				return EncodeUnstructuredHeader (Options, format, encoding, Field, textValue);
 			}
@@ -1006,7 +1034,7 @@ namespace MimeKit {
 		{
 			if (format.International) {
 				if (textValue == null)
-					textValue = Unfold (Rfc2047.DecodeText (Options, RawValue));
+					textValue = Unfold (Rfc2047.DecodeText (Options, rawValue));
 
 				// Note: if we're reformatting to be International, then charset doesn't matter.
 				return FormatRawValue (format, CharsetUtils.UTF8);
@@ -1156,7 +1184,7 @@ namespace MimeKit {
 		/// <returns>A string representing the <see cref="Header"/>.</returns>
 		public override string ToString ()
 		{
-			return Field + ": " + Value;
+			return IsInvalid ? Field : Field + ": " + Value;
 		}
 
 		/// <summary>
@@ -1229,6 +1257,7 @@ namespace MimeKit {
 			byte* inend = input + length;
 			byte* start = input;
 			byte* inptr = input;
+			var invalid = false;
 
 			// find the end of the field name
 			if (strict) {
@@ -1243,8 +1272,13 @@ namespace MimeKit {
 				inptr++;
 
 			if (inptr == inend || *inptr != ':') {
-				header = null;
-				return false;
+				if (strict) {
+					header = null;
+					return false;
+				}
+
+				invalid = true;
+				inptr = inend;
 			}
 
 			var field = new byte[(int) (inptr - start)];
@@ -1255,19 +1289,25 @@ namespace MimeKit {
 					*outptr++ = *start++;
 			}
 
-			inptr++;
+			byte[] value;
 
-			int count = (int) (inend - inptr);
-			var value = new byte[count];
+			if (inptr < inend) {
+				inptr++;
 
-			fixed (byte *outbuf = value) {
-				byte* outptr = outbuf;
+				int count = (int) (inend - inptr);
+				value = new byte[count];
 
-				while (inptr < inend)
-					*outptr++ = *inptr++;
+				fixed (byte* outbuf = value) {
+					byte* outptr = outbuf;
+
+					while (inptr < inend)
+						*outptr++ = *inptr++;
+				}
+			} else {
+				value = new byte[0];
 			}
 
-			header = new Header (options, field, value);
+			header = new Header (options, field, value, invalid);
 
 			return true;
 		}
@@ -1399,13 +1439,7 @@ namespace MimeKit {
 		/// </exception>
 		public static bool TryParse (ParserOptions options, byte[] buffer, out Header header)
 		{
-			ParseUtils.ValidateArguments (options, buffer);
-
-			unsafe {
-				fixed (byte* inptr = buffer) {
-					return TryParse (options.Clone (), inptr, buffer.Length, true, out header);
-				}
-			}
+			return TryParse (options, buffer, 0, out header);
 		}
 
 		/// <summary>

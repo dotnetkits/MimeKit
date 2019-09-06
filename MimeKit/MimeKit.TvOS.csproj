@@ -47,7 +47,10 @@
     <Compile Include="Cryptography\ApplicationPgpSignature.cs" />
     <Compile Include="Cryptography\ApplicationPkcs7Mime.cs" />
     <Compile Include="Cryptography\ApplicationPkcs7Signature.cs" />
+    <Compile Include="Cryptography\ArcSigner.cs" />
+    <Compile Include="Cryptography\ArcVerifier.cs" />
     <Compile Include="Cryptography\AsymmetricAlgorithmExtensions.cs" />
+    <Compile Include="Cryptography\AuthenticationResults.cs" />
     <Compile Include="Cryptography\BouncyCastleCertificateExtensions.cs" />
     <Compile Include="Cryptography\BouncyCastleSecureMimeContext.cs" />
     <Compile Include="Cryptography\CertificateNotFoundException.cs" />
@@ -63,11 +66,16 @@
     <Compile Include="Cryptography\DkimBodyFilter.cs" />
     <Compile Include="Cryptography\DkimCanonicalizationAlgorithm.cs" />
     <Compile Include="Cryptography\DkimHashStream.cs" />
+    <Compile Include="Cryptography\DkimPublicKeyLocatorBase.cs" />
     <Compile Include="Cryptography\DkimRelaxedBodyFilter.cs" />
     <Compile Include="Cryptography\DkimSignatureAlgorithm.cs" />
     <Compile Include="Cryptography\DkimSignatureStream.cs" />
     <Compile Include="Cryptography\DkimSigner.cs" />
+    <Compile Include="Cryptography\DkimSignerBase.cs" />
     <Compile Include="Cryptography\DkimSimpleBodyFilter.cs" />
+    <Compile Include="Cryptography\DkimVerifier.cs" />
+    <Compile Include="Cryptography\DkimVerifierBase.cs" />
+    <Compile Include="Cryptography\Ed25519DigestSigner.cs" />
     <Compile Include="Cryptography\EncryptionAlgorithm.cs" />
     <Compile Include="Cryptography\GnuPGContext.cs" />
     <Compile Include="Cryptography\IDigitalCertificate.cs" />
@@ -86,6 +94,7 @@
     <Compile Include="Cryptography\PrivateKeyNotFoundException.cs" />
     <Compile Include="Cryptography\PublicKeyAlgorithm.cs" />
     <Compile Include="Cryptography\PublicKeyNotFoundException.cs" />
+    <Compile Include="Cryptography\RsaSignaturePaddingScheme.cs" />
     <Compile Include="Cryptography\SecureMailboxAddress.cs" />
     <Compile Include="Cryptography\SecureMimeContext.cs" />
     <Compile Include="Cryptography\SecureMimeDigitalCertificate.cs" />

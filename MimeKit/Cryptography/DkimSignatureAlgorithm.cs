@@ -31,6 +31,9 @@ namespace MimeKit.Cryptography {
 	/// <remarks>
 	/// A DKIM signature algorithm.
 	/// </remarks>
+	/// <example>
+	/// <code language="c#" source="Examples\DkimExamples.cs" region="DkimSign" />
+	/// </example>
 	public enum DkimSignatureAlgorithm {
 		/// <summary>
 		/// The RSA-SHA1 signature algorithm.
@@ -40,6 +43,11 @@ namespace MimeKit.Cryptography {
 		/// <summary>
 		/// The RSA-SHA256 signature algorithm.
 		/// </summary>
-		RsaSha256
+		RsaSha256,
+
+		/// <summary>
+		/// The Ed25519-SHA256 signature algorithm.
+		/// </summary>
+		Ed25519Sha256
 	}
 }

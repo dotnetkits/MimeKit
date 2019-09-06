@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2014-2017 Jeffrey Stedfast
+// Copyright (c) 2014-2019 Jeffrey Stedfast
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -137,13 +137,13 @@ namespace MessageReader
 		}
 
 		// Replaces <img src=...> urls that refer to images embedded within the message with
-		// "file://" urls that the browser control will actually be able to load.
+		// "data:" urls that the browser control will actually be able to load.
 		void HtmlTagCallback (HtmlTagContext ctx, HtmlWriter htmlWriter)
 		{
 			if (ctx.TagId == HtmlTagId.Image && !ctx.IsEndTag && stack.Count > 0) {
 				ctx.WriteTag (htmlWriter, false);
 
-				// replace the src attribute with a file:// URL
+				// replace the src attribute with a "data:" URL
 				foreach (var attribute in ctx.Attributes) {
 					if (attribute.Id == HtmlAttributeId.Src) {
 						MimePart image;

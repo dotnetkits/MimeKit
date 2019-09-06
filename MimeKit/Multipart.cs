@@ -132,7 +132,7 @@ namespace MimeKit {
 		/// </exception>
 		public Multipart (string subtype) : base ("multipart", subtype)
 		{
-			ContentType.Parameters["boundary"] = GenerateBoundary ();
+			ContentType.Boundary = GenerateBoundary ();
 			children = new List<MimeEntity> ();
 			WriteEndBoundary = true;
 		}
@@ -356,10 +356,10 @@ namespace MimeKit {
 			return builder.ToString ();
 		}
 
-		static void WriteBytes (FormatOptions options, Stream stream, byte[] bytes, CancellationToken cancellationToken)
+		static void WriteBytes (FormatOptions options, Stream stream, byte[] bytes, bool ensureNewLine, CancellationToken cancellationToken)
 		{
 			var cancellable = stream as ICancellableStream;
-			var filter = options.CreateNewLineFilter ();
+			var filter = options.CreateNewLineFilter (ensureNewLine);
 			int index, length;
 
 			var output = filter.Flush (bytes, 0, bytes.Length, out index, out length);
@@ -372,9 +372,9 @@ namespace MimeKit {
 			}
 		}
 
-		static Task WriteBytesAsync (FormatOptions options, Stream stream, byte[] bytes, CancellationToken cancellationToken)
+		static Task WriteBytesAsync (FormatOptions options, Stream stream, byte[] bytes, bool ensureNewLine, CancellationToken cancellationToken)
 		{
-			var filter = options.CreateNewLineFilter ();
+			var filter = options.CreateNewLineFilter (ensureNewLine);
 			int index, length;
 
 			var output = filter.Flush (bytes, 0, bytes.Length, out index, out length);
@@ -427,9 +427,6 @@ namespace MimeKit {
 		/// </exception>
 		public override void WriteTo (FormatOptions options, Stream stream, bool contentOnly, CancellationToken cancellationToken = default (CancellationToken))
 		{
-			if (Boundary == null)
-				Boundary = GenerateBoundary ();
-
 			base.WriteTo (options, stream, contentOnly, cancellationToken);
 
 			if (ContentType.IsMimeType ("multipart", "signed")) {
@@ -444,7 +441,7 @@ namespace MimeKit {
 			var cancellable = stream as ICancellableStream;
 
 			if (RawPreamble != null && RawPreamble.Length > 0)
-				WriteBytes (options, stream, RawPreamble, cancellationToken);
+				WriteBytes (options, stream, RawPreamble, children.Count > 0 || EnsureNewLine, cancellationToken);
 
 			var boundary = Encoding.ASCII.GetBytes ("--" + Boundary + "--");
 
@@ -497,6 +494,7 @@ namespace MimeKit {
 						(multi != null && !multi.WriteEndBoundary))
 						continue;
 
+					cancellationToken.ThrowIfCancellationRequested ();
 					stream.Write (options.NewLineBytes, 0, options.NewLineBytes.Length);
 				}
 
@@ -513,15 +511,16 @@ namespace MimeKit {
 			}
 
 			if (RawEpilogue != null && RawEpilogue.Length > 0)
-				WriteBytes (options, stream, RawEpilogue, cancellationToken);
+				WriteBytes (options, stream, RawEpilogue, EnsureNewLine, cancellationToken);
 		}
 
 		/// <summary>
 		/// Asynchronously writes the <see cref="MimeKit.Multipart"/> to the specified output stream.
 		/// </summary>
 		/// <remarks>
-		/// Writes the multipart MIME entity and its subparts to the output stream.
+		/// Asynchronously writes the multipart MIME entity and its subparts to the output stream.
 		/// </remarks>
+		/// <returns>An awaitable task.</returns>
 		/// <param name="options">The formatting options.</param>
 		/// <param name="stream">The output stream.</param>
 		/// <param name="contentOnly"><c>true</c> if only the content should be written; otherwise, <c>false</c>.</param>
@@ -539,9 +538,6 @@ namespace MimeKit {
 		/// </exception>
 		public override async Task WriteToAsync (FormatOptions options, Stream stream, bool contentOnly, CancellationToken cancellationToken = default (CancellationToken))
 		{
-			if (Boundary == null)
-				Boundary = GenerateBoundary ();
-
 			await base.WriteToAsync (options, stream, contentOnly, cancellationToken).ConfigureAwait (false);
 
 			if (ContentType.IsMimeType ("multipart", "signed")) {
@@ -554,7 +550,7 @@ namespace MimeKit {
 			}
 
 			if (RawPreamble != null && RawPreamble.Length > 0)
-				await WriteBytesAsync (options, stream, RawPreamble, cancellationToken).ConfigureAwait (false);
+				await WriteBytesAsync (options, stream, RawPreamble, children.Count > 0 || EnsureNewLine, cancellationToken).ConfigureAwait (false);
 
 			var boundary = Encoding.ASCII.GetBytes ("--" + Boundary + "--");
 
@@ -588,7 +584,7 @@ namespace MimeKit {
 				await stream.WriteAsync (options.NewLineBytes, 0, options.NewLineBytes.Length, cancellationToken).ConfigureAwait (false);
 
 			if (RawEpilogue != null && RawEpilogue.Length > 0)
-				await WriteBytesAsync (options, stream, RawEpilogue, cancellationToken).ConfigureAwait (false);
+				await WriteBytesAsync (options, stream, RawEpilogue, EnsureNewLine, cancellationToken).ConfigureAwait (false);
 		}
 
 		#region ICollection implementation

@@ -42,12 +42,13 @@ using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Pkix;
 using Org.BouncyCastle.X509;
 using Org.BouncyCastle.Crypto;
-using Org.BouncyCastle.Asn1.Cms;
+using Org.BouncyCastle.Asn1.Pkcs;
+using Org.BouncyCastle.Asn1.X509;
+using Org.BouncyCastle.Asn1.Smime;
 using Org.BouncyCastle.X509.Store;
 using Org.BouncyCastle.Utilities.Date;
+using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Utilities.Collections;
-using Org.BouncyCastle.Asn1.Smime;
-using Org.BouncyCastle.Asn1.X509;
 
 using AttributeTable = Org.BouncyCastle.Asn1.Cms.AttributeTable;
 
@@ -250,10 +251,16 @@ namespace MimeKit.Cryptography
 
 		Stream Sign (CmsSigner signer, Stream content, bool encapsulate)
 		{
+			var signedAttributes = AddSecureMimeCapabilities (signer.SignedAttributes);
 			var signedData = new CmsSignedDataStreamGenerator ();
+			var digestOid = GetDigestOid (signer.DigestAlgorithm);
 
-			signedData.AddSigner (signer.PrivateKey, signer.Certificate, GetDigestOid (signer.DigestAlgorithm),
-			                      AddSecureMimeCapabilities (signer.SignedAttributes), signer.UnsignedAttributes);
+			if (signer.PrivateKey is RsaKeyParameters && signer.RsaSignaturePaddingScheme == RsaSignaturePaddingScheme.Pss) {
+				signedData.AddSigner (signer.PrivateKey, signer.Certificate, PkcsObjectIdentifiers.IdRsassaPss.Id, digestOid,
+					signedAttributes, signer.UnsignedAttributes);
+			} else {
+				signedData.AddSigner (signer.PrivateKey, signer.Certificate, digestOid, signedAttributes, signer.UnsignedAttributes);
+			}
 
 			signedData.AddCertificates (signer.CertificateChain);
 
@@ -417,6 +424,38 @@ namespace MimeKit.Cryptography
 			return GetCertificate (signer);
 		}
 
+		/// <summary>
+		/// Build a certificate chain.
+		/// </summary>
+		/// <remarks>
+		/// <para>Builds a certificate chain for the provided certificate.</para>
+		/// <para>This method is ideal for use with custom <see cref="GetCmsSigner"/>
+		/// implementations when it is desirable to include the certificate chain
+		/// in the signature.</para>
+		/// </remarks>
+		/// <param name="certificate">The certificate to build the chain for.</param>
+		/// <returns>The certificate chain, including the specified certificate.</returns>
+		protected IList<X509Certificate> BuildCertificateChain (X509Certificate certificate)
+		{
+			var selector = new X509CertStoreSelector ();
+			selector.Certificate = certificate;
+
+			var parameters = new PkixBuilderParameters (GetTrustedAnchors (), selector);
+			parameters.ValidityModel = PkixParameters.PkixValidityModel;
+			parameters.AddStore (GetIntermediateCertificates ());
+			parameters.IsRevocationEnabled = false;
+
+			var builder = new PkixCertPathBuilder ();
+			var result = builder.Build (parameters);
+
+			var chain = new X509Certificate[result.CertPath.Certificates.Count];
+
+			for (int i = 0; i < chain.Length; i++)
+				chain[i] = (X509Certificate) result.CertPath.Certificates[i];
+
+			return chain;
+		}
+
 		PkixCertPath BuildCertPath (HashSet anchors, IX509Store certificates, IX509Store crls, X509Certificate certificate, DateTime signingTime)
 		{
 			var intermediate = new X509CertificateStore ();
@@ -440,7 +479,8 @@ namespace MimeKit.Cryptography
 			if (signingTime != default (DateTime))
 				parameters.Date = new DateTimeObject (signingTime);
 
-			var result = new PkixCertPathBuilder ().Build (parameters);
+			var builder = new PkixCertPathBuilder ();
+			var result = builder.Build (parameters);
 
 			return result.CertPath;
 		}

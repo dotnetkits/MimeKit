@@ -48,11 +48,11 @@ namespace UnitTests.Cryptography {
 		const string ExpiredCertificateMessage = "The certificate is revoked.\r\n";
 		const string UntrustedRootCertificateMessage = "A certificate chain processed, but terminated in a root certificate which is not trusted by the trust provider.\r\n";
 		const string ThunderbirdFingerprint = "354ea4dcf98166639b58ec5df06a65de0cd8a95c";
-		const string MimeKitFingerprint = "4846fb5e27df6a23bb35a995443363e447d3426d";
+		const string MimeKitFingerprint = "66679bc836cf4f22cb3680bc9bbae50898cd30e0";
 		const string ThunderbirdName = "fejj@gnome.org";
 
-		static readonly DateTime MimeKitCreationDate = new DateTime (2018, 07, 30, 13, 13, 19);
-		static readonly DateTime MimeKitExpirationDate = new DateTime (2019, 07, 30, 13, 13, 19);
+		static readonly DateTime MimeKitCreationDate = new DateTime (2019, 08, 21, 11, 46, 34);
+		static readonly DateTime MimeKitExpirationDate = new DateTime (2029, 08, 18, 11, 46, 34);
 
 		static readonly string[] CertificateAuthorities = {
 			"certificate-authority.crt", "intermediate.crt", "StartComCertificationAuthority.crt", "StartComClass1PrimaryIntermediateClientCA.crt"
@@ -608,6 +608,57 @@ namespace UnitTests.Cryptography {
 				//Assert.AreEqual (EncryptionAlgorithm.RC264, algorithms[i++], "Expected RC2-64 capability");
 				//Assert.AreEqual (EncryptionAlgorithm.Des, algorithms[i++], "Expected DES capability");
 				//Assert.AreEqual (EncryptionAlgorithm.RC240, algorithms[i++], "Expected RC2-40 capability");
+
+				try {
+					bool valid = signature.Verify ();
+
+					Assert.IsTrue (valid, "Bad signature from {0}", signature.SignerCertificate.Email);
+				} catch (DigitalSignatureVerifyException ex) {
+					if (ctx is WindowsSecureMimeContext) {
+						// AppVeyor gets an exception about the root certificate not being trusted
+						Assert.AreEqual (UntrustedRootCertificateMessage, ex.InnerException.Message);
+					} else {
+						Assert.Fail ("Failed to verify signature: {0}", ex);
+					}
+				}
+			}
+		}
+
+		[Test]
+		public virtual void TestSecureMimeSigningWithRsaSsaPss ()
+		{
+			var signer = new CmsSigner (Path.Combine ("..", "..", "TestData", "smime", "smime.p12"), "no.secret") {
+				RsaSignaturePaddingScheme = RsaSignaturePaddingScheme.Pss
+			};
+			var body = new TextPart ("plain") { Text = "This is some cleartext that we'll end up signing..." };
+
+			var multipart = MultipartSigned.Create (signer, body);
+
+			Assert.AreEqual (2, multipart.Count, "The multipart/signed has an unexpected number of children.");
+
+			var protocol = multipart.ContentType.Parameters["protocol"];
+			Assert.AreEqual ("application/pkcs7-signature", protocol, "The multipart/signed protocol does not match.");
+
+			Assert.IsInstanceOf<TextPart> (multipart[0], "The first child is not a text part.");
+			Assert.IsInstanceOf<ApplicationPkcs7Signature> (multipart[1], "The second child is not a detached signature.");
+
+			var signatures = multipart.Verify ();
+			Assert.AreEqual (1, signatures.Count, "Verify returned an unexpected number of signatures.");
+
+			var signature = signatures[0];
+
+			using (var ctx = CreateContext ()) {
+				if (!(ctx is WindowsSecureMimeContext) || Path.DirectorySeparatorChar == '\\')
+					Assert.AreEqual ("MimeKit UnitTests", signature.SignerCertificate.Name);
+				Assert.AreEqual ("mimekit@example.com", signature.SignerCertificate.Email);
+				Assert.AreEqual (MimeKitFingerprint, signature.SignerCertificate.Fingerprint.ToLowerInvariant ());
+
+				var algorithms = GetEncryptionAlgorithms (signature);
+				int i = 0;
+
+				Assert.AreEqual (EncryptionAlgorithm.Aes256, algorithms[i++], "Expected AES-256 capability");
+				Assert.AreEqual (EncryptionAlgorithm.Aes192, algorithms[i++], "Expected AES-192 capability");
+				Assert.AreEqual (EncryptionAlgorithm.Aes128, algorithms[i++], "Expected AES-128 capability");
 
 				try {
 					bool valid = signature.Verify ();
@@ -1202,7 +1253,7 @@ namespace UnitTests.Cryptography {
 		}
 
 		[Test]
-		public void TestSecureMimeImportExport ()
+		public virtual void TestSecureMimeImportExport ()
 		{
 			var self = new MailboxAddress ("MimeKit UnitTests", "mimekit@example.com");
 			var mailboxes = new List<MailboxAddress> ();
@@ -1361,6 +1412,15 @@ namespace UnitTests.Cryptography {
 		}
 
 		[Test]
+		public override void TestSecureMimeSigningWithRsaSsaPss ()
+		{
+			if (Path.DirectorySeparatorChar != '\\')
+				return;
+
+			base.TestSecureMimeSigningWithRsaSsaPss ();
+		}
+
+		[Test]
 		public override void TestSecureMimeMessageSigning ()
 		{
 			if (Path.DirectorySeparatorChar != '\\')
@@ -1430,6 +1490,15 @@ namespace UnitTests.Cryptography {
 				return;
 
 			base.TestSecureMimeSignAndEncrypt ();
+		}
+
+		[Test]
+		public override void TestSecureMimeImportExport ()
+		{
+			if (Path.DirectorySeparatorChar != '\\')
+				return;
+
+			base.TestSecureMimeImportExport ();
 		}
 	}
 }

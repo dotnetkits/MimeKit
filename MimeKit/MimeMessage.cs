@@ -29,6 +29,7 @@ using System.IO;
 using System.Text;
 using System.Linq;
 using System.Threading;
+using System.Globalization;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 
@@ -45,6 +46,7 @@ using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Security;
+using Org.BouncyCastle.Crypto.Parameters;
 
 using MimeKit.Cryptography;
 #endif
@@ -180,7 +182,7 @@ namespace MimeKit {
 							Headers.Add (h);
 					}
 
-					continue;						
+					continue;
 				}
 
 				var entity = obj as MimeEntity;
@@ -1044,8 +1046,12 @@ namespace MimeKit {
 			if (maxLineLength < FormatOptions.MinimumLineLength || maxLineLength > FormatOptions.MaximumLineLength)
 				throw new ArgumentOutOfRangeException (nameof (maxLineLength));
 
-			if (Body != null)
+			if (Body != null) {
+				if (MimeVersion == null && Body.Headers.Count > 0)
+					MimeVersion = new Version (1, 0);
+
 				Body.Prepare (constraint, maxLineLength);
+			}
 		}
 
 		/// <summary>
@@ -1088,11 +1094,14 @@ namespace MimeKit {
 						if (options.HiddenHeaders.Contains (header.Id))
 							continue;
 
-						var rawValue = header.GetRawValue (options);
-
 						filtered.Write (header.RawField, 0, header.RawField.Length, cancellationToken);
-						filtered.Write (Header.Colon, 0, Header.Colon.Length, cancellationToken);
-						filtered.Write (rawValue, 0, rawValue.Length, cancellationToken);
+
+						if (!header.IsInvalid) {
+							var rawValue = header.GetRawValue (options);
+
+							filtered.Write (Header.Colon, 0, Header.Colon.Length, cancellationToken);
+							filtered.Write (rawValue, 0, rawValue.Length, cancellationToken);
+						}
 					}
 
 					filtered.Flush (cancellationToken);
@@ -1124,8 +1133,9 @@ namespace MimeKit {
 		/// Asynchronously write the message to the specified output stream.
 		/// </summary>
 		/// <remarks>
-		/// Writes the message to the output stream using the provided formatting options.
+		/// Asynchronously writes the message to the output stream using the provided formatting options.
 		/// </remarks>
+		/// <returns>An awaitable task.</returns>
 		/// <param name="options">The formatting options.</param>
 		/// <param name="stream">The output stream.</param>
 		/// <param name="headersOnly"><c>true</c> if only the headers should be written; otherwise, <c>false</c>.</param>
@@ -1160,11 +1170,14 @@ namespace MimeKit {
 						if (options.HiddenHeaders.Contains (header.Id))
 							continue;
 
-						var rawValue = header.GetRawValue (options);
-
 						await filtered.WriteAsync (header.RawField, 0, header.RawField.Length, cancellationToken).ConfigureAwait (false);
-						await filtered.WriteAsync (Header.Colon, 0, Header.Colon.Length, cancellationToken).ConfigureAwait (false);
-						await filtered.WriteAsync (rawValue, 0, rawValue.Length, cancellationToken).ConfigureAwait (false);
+
+						if (!header.IsInvalid) {
+							var rawValue = header.GetRawValue (options);
+
+							await filtered.WriteAsync (Header.Colon, 0, Header.Colon.Length, cancellationToken).ConfigureAwait (false);
+							await filtered.WriteAsync (rawValue, 0, rawValue.Length, cancellationToken).ConfigureAwait (false);
+						}
 					}
 
 					await filtered.FlushAsync (cancellationToken).ConfigureAwait (false);
@@ -1214,8 +1227,9 @@ namespace MimeKit {
 		/// Asynchronously write the message to the specified output stream.
 		/// </summary>
 		/// <remarks>
-		/// Writes the message to the output stream using the provided formatting options.
+		/// Asynchronously writes the message to the output stream using the provided formatting options.
 		/// </remarks>
+		/// <returns>An awaitable task.</returns>
 		/// <param name="options">The formatting options.</param>
 		/// <param name="stream">The output stream.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
@@ -1262,8 +1276,9 @@ namespace MimeKit {
 		/// Asynchronously write the message to the specified output stream.
 		/// </summary>
 		/// <remarks>
-		/// Writes the message to the output stream using the default formatting options.
+		/// Asynchronously writes the message to the output stream using the default formatting options.
 		/// </remarks>
+		/// <returns>An awaitable task.</returns>
 		/// <param name="stream">The output stream.</param>
 		/// <param name="headersOnly"><c>true</c> if only the headers should be written; otherwise, <c>false</c>.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
@@ -1307,8 +1322,9 @@ namespace MimeKit {
 		/// Asynchronously write the message to the specified output stream.
 		/// </summary>
 		/// <remarks>
-		/// Writes the message to the output stream using the default formatting options.
+		/// Asynchronously writes the message to the output stream using the default formatting options.
 		/// </remarks>
+		/// <returns>An awaitable task.</returns>
 		/// <param name="stream">The output stream.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
@@ -1376,8 +1392,9 @@ namespace MimeKit {
 		/// Asynchronously write the message to the specified file.
 		/// </summary>
 		/// <remarks>
-		/// Writes the message to the specified file using the provided formatting options.
+		/// Asynchronously writes the message to the specified file using the provided formatting options.
 		/// </remarks>
+		/// <returns>An awaitable task.</returns>
 		/// <param name="options">The formatting options.</param>
 		/// <param name="fileName">The file.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
@@ -1462,8 +1479,9 @@ namespace MimeKit {
 		/// Asynchronously write the message to the specified file.
 		/// </summary>
 		/// <remarks>
-		/// Writes the message to the specified file using the default formatting options.
+		/// Asynchronously writes the message to the specified file using the default formatting options.
 		/// </remarks>
+		/// <returns>An awaitable task.</returns>
 		/// <param name="fileName">The file.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
@@ -1560,95 +1578,7 @@ namespace MimeKit {
 		}
 
 #if ENABLE_CRYPTO
-		static void DkimWriteHeaderRelaxed (FormatOptions options, Stream stream, Header header, bool isDkimSignature)
-		{
-			// o  Convert all header field names (not the header field values) to
-			//    lowercase.  For example, convert "SUBJect: AbC" to "subject: AbC".
-			var name = Encoding.ASCII.GetBytes (header.Field.ToLowerInvariant ());
-			var rawValue = header.GetRawValue (options);
-			int index = 0;
-
-			// o  Delete any WSP characters remaining before and after the colon
-			//    separating the header field name from the header field value.  The
-			//    colon separator MUST be retained.
-			stream.Write (name, 0, name.Length);
-			stream.WriteByte ((byte) ':');
-
-			// trim leading whitespace...
-			while (index < rawValue.Length && rawValue[index].IsWhitespace ())
-				index++;
-
-			while (index < rawValue.Length) {
-				int startIndex = index;
-
-				// look for the first non-whitespace character
-				while (index < rawValue.Length && rawValue[index].IsWhitespace ())
-					index++;
-
-				// o  Delete all WSP characters at the end of each unfolded header field
-				//    value.
-				if (index >= rawValue.Length)
-					break;
-
-				// o  Convert all sequences of one or more WSP characters to a single SP
-				//    character.  WSP characters here include those before and after a
-				//    line folding boundary.
-				if (index > startIndex)
-					stream.WriteByte ((byte) ' ');
-
-				startIndex = index;
-
-				while (index < rawValue.Length && !rawValue[index].IsWhitespace ())
-					index++;
-
-				if (index > startIndex)
-					stream.Write (rawValue, startIndex, index - startIndex);
-			}
-
-			if (!isDkimSignature)
-				stream.Write (options.NewLineBytes, 0, options.NewLineBytes.Length);
-		}
-
-		static void DkimWriteHeaderSimple (FormatOptions options, Stream stream, Header header, bool isDkimSignature)
-		{
-			var rawValue = header.GetRawValue (options);
-			int rawLength = rawValue.Length;
-
-			if (isDkimSignature && rawLength > 0) {
-				if (rawValue[rawLength - 1] == (byte) '\n') {
-					rawLength--;
-
-					if (rawLength > 0 && rawValue[rawLength - 1] == (byte) '\r')
-						rawLength--;
-				}
-			}
-
-			stream.Write (header.RawField, 0, header.RawField.Length);
-			stream.Write (Header.Colon, 0, Header.Colon.Length);
-			stream.Write (rawValue, 0, rawLength);
-		}
-
-		static ISigner DkimGetDigestSigner (DkimSignatureAlgorithm algorithm, AsymmetricKeyParameter key)
-		{
-#if ENABLE_NATIVE_DKIM
-			return new SystemSecuritySigner (algorithm, key.AsAsymmetricAlgorithm ());
-#else
-			DerObjectIdentifier id;
-
-			if (algorithm == DkimSignatureAlgorithm.RsaSha256)
-				id = PkcsObjectIdentifiers.Sha256WithRsaEncryption;
-			else
-				id = PkcsObjectIdentifiers.Sha1WithRsaEncryption;
-
-			var signer = SignerUtilities.GetSigner (id);
-
-			signer.Init (key.IsPrivate, key);
-
-			return signer;
-#endif
-		}
-
-		byte[] DkimHashBody (FormatOptions options, DkimSignatureAlgorithm signatureAlgorithm, DkimCanonicalizationAlgorithm bodyCanonicalizationAlgorithm, int maxLength)
+		internal byte[] HashBody (FormatOptions options, DkimSignatureAlgorithm signatureAlgorithm, DkimCanonicalizationAlgorithm bodyCanonicalizationAlgorithm, int maxLength)
 		{
 			using (var stream = new DkimHashStream (signatureAlgorithm, maxLength)) {
 				using (var filtered = new FilteredStream (stream)) {
@@ -1681,118 +1611,6 @@ namespace MimeKit {
 			}
 		}
 
-		void DkimWriteHeaders (FormatOptions options, IList<string> fields, DkimCanonicalizationAlgorithm headerCanonicalizationAlgorithm, Stream stream)
-		{
-			var counts = new Dictionary<string, int> (StringComparer.Ordinal);
-
-			for (int i = 0; i < fields.Count; i++) {
-				var headers = fields[i].StartsWith ("Content-", StringComparison.OrdinalIgnoreCase) ? Body.Headers : Headers;
-				var name = fields[i].ToLowerInvariant ();
-				int index, count, n = 0;
-
-				if (!counts.TryGetValue (name, out count))
-					count = 0;
-
-				// Note: signers choosing to sign an existing header field that occurs more
-				// than once in the message (such as Received) MUST sign the physically last
-				// instance of that header field in the header block. Signers wishing to sign
-				// multiple instances of such a header field MUST include the header field
-				// name multiple times in the list of header fields and MUST sign such header
-				// fields in order from the bottom of the header field block to the top.
-				index = headers.LastIndexOf (name);
-
-				// find the n'th header with this name
-				while (n < count && --index >= 0) {
-					if (headers[index].Field.Equals (name, StringComparison.OrdinalIgnoreCase))
-						n++;
-				}
-
-				if (index < 0)
-					continue;
-
-				var header = headers[index];
-
-				switch (headerCanonicalizationAlgorithm) {
-				case DkimCanonicalizationAlgorithm.Relaxed:
-					DkimWriteHeaderRelaxed (options, stream, header, false);
-					break;
-				default:
-					DkimWriteHeaderSimple (options, stream, header, false);
-					break;
-				}
-
-				counts[name] = ++count;
-			}
-		}
-
-		static readonly string[] DkimShouldNotInclude = { "return-path", "received", "comments", "keywords", "bcc", "resent-bcc", "dkim-signature" };
-
-		void DkimSign (FormatOptions options, DkimSigner signer, IList<string> fields, DkimCanonicalizationAlgorithm headerCanonicalizationAlgorithm, DkimCanonicalizationAlgorithm bodyCanonicalizationAlgorithm)
-		{
-			if (version == null && Body != null && Body.Headers.Count > 0)
-				MimeVersion = new Version (1, 0);
-
-			var t = DateTime.UtcNow - DateUtils.UnixEpoch;
-			var value = new StringBuilder ("v=1");
-			byte[] signature, hash;
-			Header dkim;
-
-			options = options.Clone ();
-			options.NewLineFormat = NewLineFormat.Dos;
-
-			switch (signer.SignatureAlgorithm) {
-			case DkimSignatureAlgorithm.RsaSha256:
-				value.Append ("; a=rsa-sha256");
-				break;
-			default:
-				value.Append ("; a=rsa-sha1");
-				break;
-			}
-
-			value.AppendFormat ("; d={0}; s={1}", signer.Domain, signer.Selector);
-			value.AppendFormat ("; c={0}/{1}",
-				headerCanonicalizationAlgorithm.ToString ().ToLowerInvariant (),
-				bodyCanonicalizationAlgorithm.ToString ().ToLowerInvariant ());
-			if (!string.IsNullOrEmpty (signer.QueryMethod))
-				value.AppendFormat ("; q={0}", signer.QueryMethod);
-			if (!string.IsNullOrEmpty (signer.AgentOrUserIdentifier))
-				value.AppendFormat ("; i={0}", signer.AgentOrUserIdentifier);
-			value.AppendFormat ("; t={0}", (long) t.TotalSeconds);
-
-			using (var stream = new DkimSignatureStream (signer.DigestSigner)) {
-				using (var filtered = new FilteredStream (stream)) {
-					filtered.Add (options.CreateNewLineFilter ());
-
-					// write the specified message headers
-					DkimWriteHeaders (options, fields, headerCanonicalizationAlgorithm, filtered);
-
-					value.AppendFormat ("; h={0}", string.Join (":", fields.ToArray ()));
-
-					hash = DkimHashBody (options, signer.SignatureAlgorithm, bodyCanonicalizationAlgorithm, -1);
-					value.AppendFormat ("; bh={0}", Convert.ToBase64String (hash));
-					value.Append ("; b=");
-
-					dkim = new Header (HeaderId.DkimSignature, value.ToString ());
-					Headers.Insert (0, dkim);
-
-					switch (headerCanonicalizationAlgorithm) {
-					case DkimCanonicalizationAlgorithm.Relaxed:
-						DkimWriteHeaderRelaxed (options, filtered, dkim, true);
-						break;
-					default:
-						DkimWriteHeaderSimple (options, filtered, dkim, true);
-						break;
-					}
-
-					filtered.Flush ();
-				}
-
-				signature = stream.GenerateSignature ();
-
-				dkim.Value += Convert.ToBase64String (signature);
-			}
-		}
-
 		/// <summary>
 		/// Digitally sign the message using a DomainKeys Identified Mail (DKIM) signature.
 		/// </summary>
@@ -1820,6 +1638,7 @@ namespace MimeKit {
 		/// <para><paramref name="headers"/> contains one or more of the following headers: Return-Path,
 		/// Received, Comments, Keywords, Bcc, Resent-Bcc, or DKIM-Signature.</para>
 		/// </exception>
+		[Obsolete ("Use DkimSigner.Sign() instead.")]
 		public void Sign (FormatOptions options, DkimSigner signer, IList<string> headers, DkimCanonicalizationAlgorithm headerCanonicalizationAlgorithm = DkimCanonicalizationAlgorithm.Simple, DkimCanonicalizationAlgorithm bodyCanonicalizationAlgorithm = DkimCanonicalizationAlgorithm.Simple)
 		{
 			if (options == null)
@@ -1828,32 +1647,10 @@ namespace MimeKit {
 			if (signer == null)
 				throw new ArgumentNullException (nameof (signer));
 
-			if (headers == null)
-				throw new ArgumentNullException (nameof (headers));
+			signer.HeaderCanonicalizationAlgorithm = headerCanonicalizationAlgorithm;
+			signer.BodyCanonicalizationAlgorithm = bodyCanonicalizationAlgorithm;
 
-			var fields = new string[headers.Count];
-			var containsFrom = false;
-
-			for (int i = 0; i < headers.Count; i++) {
-				if (headers[i] == null)
-					throw new ArgumentException ("The list of headers cannot contain null.", nameof (headers));
-
-				if (headers[i].Length == 0)
-					throw new ArgumentException ("The list of headers cannot contain empty string.", nameof (headers));
-
-				fields[i] = headers[i].ToLowerInvariant ();
-
-				if (DkimShouldNotInclude.Contains (fields[i]))
-					throw new ArgumentException (string.Format ("The list of headers to sign SHOULD NOT include the '{0}' header.", headers[i]), nameof (headers));
-
-				if (fields[i] == "from")
-					containsFrom = true;
-			}
-
-			if (!containsFrom)
-				throw new ArgumentException ("The list of headers to sign MUST include the 'From' header.", nameof (headers));
-
-			DkimSign (options, signer, fields, headerCanonicalizationAlgorithm, bodyCanonicalizationAlgorithm);
+			signer.Sign (options, this, headers);
 		}
 
 		/// <summary>
@@ -1880,6 +1677,7 @@ namespace MimeKit {
 		/// <para><paramref name="headers"/> contains one or more of the following headers: Return-Path,
 		/// Received, Comments, Keywords, Bcc, Resent-Bcc, or DKIM-Signature.</para>
 		/// </exception>
+		[Obsolete ("Use DkimSigner.Sign() instead.")]
 		public void Sign (DkimSigner signer, IList<string> headers, DkimCanonicalizationAlgorithm headerCanonicalizationAlgorithm = DkimCanonicalizationAlgorithm.Simple, DkimCanonicalizationAlgorithm bodyCanonicalizationAlgorithm = DkimCanonicalizationAlgorithm.Simple)
 		{
 			Sign (FormatOptions.Default, signer, headers, headerCanonicalizationAlgorithm, bodyCanonicalizationAlgorithm);
@@ -1912,6 +1710,7 @@ namespace MimeKit {
 		/// <para><paramref name="headers"/> contains one or more of the following headers: Return-Path,
 		/// Received, Comments, Keywords, Bcc, Resent-Bcc, or DKIM-Signature.</para>
 		/// </exception>
+		[Obsolete ("Use DkimSigner.Sign() instead.")]
 		public void Sign (FormatOptions options, DkimSigner signer, IList<HeaderId> headers, DkimCanonicalizationAlgorithm headerCanonicalizationAlgorithm = DkimCanonicalizationAlgorithm.Simple, DkimCanonicalizationAlgorithm bodyCanonicalizationAlgorithm = DkimCanonicalizationAlgorithm.Simple)
 		{
 			if (options == null)
@@ -1920,29 +1719,10 @@ namespace MimeKit {
 			if (signer == null)
 				throw new ArgumentNullException (nameof (signer));
 
-			if (headers == null)
-				throw new ArgumentNullException (nameof (headers));
+			signer.HeaderCanonicalizationAlgorithm = headerCanonicalizationAlgorithm;
+			signer.BodyCanonicalizationAlgorithm = bodyCanonicalizationAlgorithm;
 
-			var fields = new string[headers.Count];
-			var containsFrom = false;
-
-			for (int i = 0; i < headers.Count; i++) {
-				if (headers[i] == HeaderId.Unknown)
-					throw new ArgumentException ("The list of headers to sign cannot include the 'Unknown' header.", nameof (headers));
-
-				fields[i] = headers[i].ToHeaderName ().ToLowerInvariant ();
-
-				if (DkimShouldNotInclude.Contains (fields[i]))
-					throw new ArgumentException (string.Format ("The list of headers to sign SHOULD NOT include the '{0}' header.", headers[i].ToHeaderName ()), nameof (headers));
-
-				if (headers[i] == HeaderId.From)
-					containsFrom = true;
-			}
-
-			if (!containsFrom)
-				throw new ArgumentException ("The list of headers to sign MUST include the 'From' header.", nameof (headers));
-
-			DkimSign (options, signer, fields, headerCanonicalizationAlgorithm, bodyCanonicalizationAlgorithm);
+			signer.Sign (options, this, headers);
 		}
 
 		/// <summary>
@@ -1969,203 +1749,13 @@ namespace MimeKit {
 		/// <para><paramref name="headers"/> contains one or more of the following headers: Return-Path,
 		/// Received, Comments, Keywords, Bcc, Resent-Bcc, or DKIM-Signature.</para>
 		/// </exception>
+		[Obsolete ("Use DkimSigner.Sign() instead.")]
 		public void Sign (DkimSigner signer, IList<HeaderId> headers, DkimCanonicalizationAlgorithm headerCanonicalizationAlgorithm = DkimCanonicalizationAlgorithm.Simple, DkimCanonicalizationAlgorithm bodyCanonicalizationAlgorithm = DkimCanonicalizationAlgorithm.Simple)
 		{
 			Sign (FormatOptions.Default, signer, headers, headerCanonicalizationAlgorithm, bodyCanonicalizationAlgorithm);
 		}
 
-		static bool IsWhiteSpace (char c)
-		{
-			return c == ' ' || c == '\t';
-		}
-
-		static IDictionary<string, string> ParseDkimSignature (string signature)
-		{
-			var parameters = new Dictionary<string, string> (MimeUtils.OrdinalIgnoreCase);
-
-			foreach (var token in signature.Split (';')) {
-				var value = new StringBuilder ();
-				int startIndex, index = 0;
-				string name;
-
-				while (index < token.Length && IsWhiteSpace (token[index]))
-					index++;
-
-				startIndex = index;
-
-				while (index < token.Length && token[index] != '=')
-					index++;
-
-				if (index + 1 >= token.Length)
-					continue;
-
-				name = token.Substring (startIndex, index - startIndex).Trim ();
-				index++;
-
-				while (index < token.Length) {
-					if (!IsWhiteSpace (token[index]))
-						value.Append (token[index]);
-					index++;
-				}
-
-				if (parameters.ContainsKey (name))
-					throw new FormatException (string.Format ("Malformed DKIM-Signature value: duplicate parameter '{0}'.", name));
-
-				parameters.Add (name, value.ToString ());
-			}
-
-			return parameters;
-		}
-
-		static void ValidateDkimSignatureParameters (IDictionary<string, string> parameters, out DkimSignatureAlgorithm algorithm, out DkimCanonicalizationAlgorithm headerAlgorithm,
-			out DkimCanonicalizationAlgorithm bodyAlgorithm, out string d, out string s, out string q, out string[] headers, out string bh, out string b, out int maxLength)
-		{
-			bool containsFrom = false;
-			string v, a, c, h, l, id;
-
-			if (!parameters.TryGetValue ("v", out v))
-				throw new FormatException ("Malformed DKIM-Signature header: no version parameter detected.");
-
-			if (v != "1")
-				throw new FormatException (string.Format ("Unrecognized DKIM-Signature version: v={0}", v));
-
-			if (!parameters.TryGetValue ("a", out a))
-				throw new FormatException ("Malformed DKIM-Signature header: no signature algorithm parameter detected.");
-
-			switch (a.ToLowerInvariant ()) {
-			case "rsa-sha256": algorithm = DkimSignatureAlgorithm.RsaSha256; break;
-			case "rsa-sha1": algorithm = DkimSignatureAlgorithm.RsaSha1; break;
-			default: throw new FormatException (string.Format ("Unrecognized DKIM-Signature algorithm parameter: a={0}", a));
-			}
-
-			if (!parameters.TryGetValue ("d", out d))
-				throw new FormatException ("Malformed DKIM-Signature header: no domain parameter detected.");
-
-			if (parameters.TryGetValue ("i", out id)) {
-				string ident;
-				int at;
-
-				if ((at = id.LastIndexOf ('@')) == -1)
-					throw new FormatException ("Malformed DKIM-Signature header: no @ in the AUID value.");
-
-				ident = id.Substring (at + 1);
-
-				if (!ident.Equals (d, StringComparison.OrdinalIgnoreCase) && !ident.EndsWith ("." + d, StringComparison.OrdinalIgnoreCase))
-					throw new FormatException ("Invalid DKIM-Signature header: the domain in the AUID does not match the domain parameter.");
-			}
-
-			if (!parameters.TryGetValue ("s", out s))
-				throw new FormatException ("Malformed DKIM-Signature header: no selector parameter detected.");
-
-			if (!parameters.TryGetValue ("q", out q))
-				q = "dns/txt";
-
-			if (parameters.TryGetValue ("l", out l)) {
-				if (!int.TryParse (l, out maxLength))
-					throw new FormatException (string.Format ("Malformed DKIM-Signature header: invalid length parameter: l={0}", l));
-			} else {
-				maxLength = -1;
-			}
-
-			if (parameters.TryGetValue ("c", out c)) {
-				var tokens = c.ToLowerInvariant ().Split ('/');
-
-				if (tokens.Length == 0 || tokens.Length > 2)
-					throw new FormatException (string.Format ("Malformed DKIM-Signature header: invalid canonicalization parameter: c={0}", c));
-
-				switch (tokens[0]) {
-				case "relaxed": headerAlgorithm = DkimCanonicalizationAlgorithm.Relaxed; break;
-				case "simple": headerAlgorithm = DkimCanonicalizationAlgorithm.Simple; break;
-				default: throw new FormatException (string.Format ("Malformed DKIM-Signature header: invalid canonicalization parameter: c={0}", c));
-				}
-
-				if (tokens.Length == 2) {
-					switch (tokens[1]) {
-					case "relaxed": bodyAlgorithm = DkimCanonicalizationAlgorithm.Relaxed; break;
-					case "simple": bodyAlgorithm = DkimCanonicalizationAlgorithm.Simple; break;
-					default: throw new FormatException (string.Format ("Malformed DKIM-Signature header: invalid canonicalization parameter: c={0}", c));
-					}
-				} else {
-					bodyAlgorithm = DkimCanonicalizationAlgorithm.Simple;
-				}
-			} else {
-				headerAlgorithm = DkimCanonicalizationAlgorithm.Simple;
-				bodyAlgorithm = DkimCanonicalizationAlgorithm.Simple;
-			}
-
-			if (!parameters.TryGetValue ("h", out h))
-				throw new FormatException ("Malformed DKIM-Signature header: no signed header parameter detected.");
-
-			headers = h.Split (':');
-			for (int i = 0; i < headers.Length; i++) {
-				if (headers[i].Equals ("from", StringComparison.OrdinalIgnoreCase)) {
-					containsFrom = true;
-					break;
-				}
-			}
-
-			if (!containsFrom)
-				throw new FormatException (string.Format ("Malformed DKIM-Signature header: From header not signed."));
-
-			if (!parameters.TryGetValue ("bh", out bh))
-				throw new FormatException ("Malformed DKIM-Signature header: no body hash parameter detected.");
-
-			if (!parameters.TryGetValue ("b", out b))
-				throw new FormatException ("Malformed DKIM-Signature header: no signature parameter detected.");
-		}
-
-		static Header GetSignedDkimSignatureHeader (Header dkimSignature)
-		{
-			// modify the raw DKIM-Signature header value by chopping off the signature value after the "b="
-			var rawValue = (byte[]) dkimSignature.RawValue.Clone ();
-			int length = 0, index = 0;
-
-			do {
-				while (index < rawValue.Length && rawValue[index].IsWhitespace ())
-					index++;
-
-				if (index + 2 < rawValue.Length) {
-					var param = (char) rawValue[index++];
-
-					while (index < rawValue.Length && rawValue[index].IsWhitespace ())
-						index++;
-
-					if (index < rawValue.Length && rawValue[index] == (byte) '=' && param == 'b') {
-						length = ++index;
-
-						while (index < rawValue.Length && rawValue[index] != (byte) ';')
-							index++;
-
-						if (index == rawValue.Length && rawValue[index - 1] == (byte) '\n') {
-							index--;
-
-							if (rawValue[index - 1] == (byte) '\r')
-								index--;
-						}
-
-						break;
-					}
-				}
-
-				while (index < rawValue.Length && rawValue[index] != (byte) ';')
-					index++;
-
-				if (index < rawValue.Length)
-					index++;
-			} while (index < rawValue.Length);
-
-			if (index == rawValue.Length)
-				throw new FormatException ("Malformed DKIM-Signature header: missing signature parameter.");
-
-			while (index < rawValue.Length)
-				rawValue[length++] = rawValue[index++];
-
-			Array.Resize (ref rawValue, length);
-
-			return new Header (dkimSignature.Options, dkimSignature.RawField, rawValue);
-		}
-
-		async Task<bool> VerifyAsync (FormatOptions options, Header dkimSignature, IDkimPublicKeyLocator publicKeyLocator, bool doAsync, CancellationToken cancellationToken)
+		Task<bool> DkimVerifyAsync (FormatOptions options, Header dkimSignature, IDkimPublicKeyLocator publicKeyLocator, bool doAsync, CancellationToken cancellationToken)
 		{
 			if (options == null)
 				throw new ArgumentNullException (nameof (options));
@@ -2174,60 +1764,14 @@ namespace MimeKit {
 				throw new ArgumentNullException (nameof (dkimSignature));
 
 			if (dkimSignature.Id != HeaderId.DkimSignature)
-				throw new ArgumentException ("The dkimSignature parameter MUST be a DKIM-Signature header.", nameof (dkimSignature));
+				throw new ArgumentException ("The signature parameter MUST be a DKIM-Signature header.", nameof (dkimSignature));
 
-			if (publicKeyLocator == null)
-				throw new ArgumentNullException (nameof (publicKeyLocator));
-
-			var parameters = ParseDkimSignature (dkimSignature.Value);
-			DkimCanonicalizationAlgorithm headerAlgorithm, bodyAlgorithm;
-			DkimSignatureAlgorithm signatureAlgorithm;
-			AsymmetricKeyParameter key;
-			string d, s, q, bh, b;
-			string[] headers;
-			int maxLength;
-
-			ValidateDkimSignatureParameters (parameters, out signatureAlgorithm, out headerAlgorithm, out bodyAlgorithm,
-			                                 out d, out s, out q, out headers, out bh, out b, out maxLength);
+			var verifier = new DkimVerifier (publicKeyLocator);
 
 			if (doAsync)
-				key = await publicKeyLocator.LocatePublicKeyAsync (q, d, s, cancellationToken).ConfigureAwait (false);
-			else
-				key = publicKeyLocator.LocatePublicKey (q, d, s, cancellationToken);
+				return verifier.VerifyAsync (options, this, dkimSignature, cancellationToken);
 
-			options = options.Clone ();
-			options.NewLineFormat = NewLineFormat.Dos;
-
-			// first check the body hash (if that's invalid, then the entire signature is invalid)
-			var hash = Convert.ToBase64String (DkimHashBody (options, signatureAlgorithm, bodyAlgorithm, maxLength));
-
-			if (hash != bh)
-				return false;
-
-			using (var stream = new DkimSignatureStream (DkimGetDigestSigner (signatureAlgorithm, key))) {
-				using (var filtered = new FilteredStream (stream)) {
-					filtered.Add (options.CreateNewLineFilter ());
-
-					DkimWriteHeaders (options, headers, headerAlgorithm, filtered);
-
-					// now include the DKIM-Signature header that we are verifying,
-					// but only after removing the "b=" signature value.
-					var header = GetSignedDkimSignatureHeader (dkimSignature);
-
-					switch (headerAlgorithm) {
-					case DkimCanonicalizationAlgorithm.Relaxed:
-						DkimWriteHeaderRelaxed (options, filtered, header, true);
-						break;
-					default:
-						DkimWriteHeaderSimple (options, filtered, header, true);
-						break;
-					}
-
-					filtered.Flush ();
-				}
-
-				return stream.VerifySignature (b);
-			}
+			return Task.FromResult (verifier.Verify (options, this, dkimSignature, cancellationToken));
 		}
 
 		/// <summary>
@@ -2260,9 +1804,10 @@ namespace MimeKit {
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
+		[Obsolete ("Use the DkimVerifier class instead.")]
 		public bool Verify (FormatOptions options, Header dkimSignature, IDkimPublicKeyLocator publicKeyLocator, CancellationToken cancellationToken = default (CancellationToken))
 		{
-			return VerifyAsync (options, dkimSignature, publicKeyLocator, false, cancellationToken).GetAwaiter ().GetResult ();
+			return DkimVerifyAsync (options, dkimSignature, publicKeyLocator, false, cancellationToken).GetAwaiter ().GetResult ();
 		}
 
 		/// <summary>
@@ -2295,9 +1840,10 @@ namespace MimeKit {
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
+		[Obsolete ("Use the DkimVerifier class instead.")]
 		public Task<bool> VerifyAsync (FormatOptions options, Header dkimSignature, IDkimPublicKeyLocator publicKeyLocator, CancellationToken cancellationToken = default (CancellationToken))
 		{
-			return VerifyAsync (options, dkimSignature, publicKeyLocator, true, cancellationToken);
+			return DkimVerifyAsync (options, dkimSignature, publicKeyLocator, true, cancellationToken);
 		}
 
 		/// <summary>
@@ -2327,6 +1873,7 @@ namespace MimeKit {
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
+		[Obsolete ("Use the DkimVerifier class instead.")]
 		public bool Verify (Header dkimSignature, IDkimPublicKeyLocator publicKeyLocator, CancellationToken cancellationToken = default (CancellationToken))
 		{
 			return Verify (FormatOptions.Default, dkimSignature, publicKeyLocator, cancellationToken);
@@ -2359,6 +1906,7 @@ namespace MimeKit {
 		/// <exception cref="System.OperationCanceledException">
 		/// The operation was canceled via the cancellation token.
 		/// </exception>
+		[Obsolete ("Use the DkimVerifier class instead.")]
 		public Task<bool> VerifyAsync (Header dkimSignature, IDkimPublicKeyLocator publicKeyLocator, CancellationToken cancellationToken = default (CancellationToken))
 		{
 			return VerifyAsync (FormatOptions.Default, dkimSignature, publicKeyLocator, cancellationToken);

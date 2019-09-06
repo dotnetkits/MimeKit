@@ -21,7 +21,7 @@
     <Optimize>False</Optimize>
     <OutputPath>bin\Debug\net45</OutputPath>
     <IntermediateOutputPath>obj\Debug\net45</IntermediateOutputPath>
-    <DefineConstants>DEBUG;TRACE;SERIALIZABLE;ENABLE_CRYPTO;ENABLE_SNM;</DefineConstants>
+    <DefineConstants>DEBUG;TRACE;SERIALIZABLE;ENABLE_CRYPTO;ENABLE_SNM;NET_4_5</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
@@ -31,7 +31,7 @@
     <Optimize>True</Optimize>
     <OutputPath>bin\Release\net45</OutputPath>
     <IntermediateOutputPath>obj\Release\net45</IntermediateOutputPath>
-    <DefineConstants>TRACE;SERIALIZABLE;ENABLE_CRYPTO;ENABLE_SNM;</DefineConstants>
+    <DefineConstants>TRACE;SERIALIZABLE;ENABLE_CRYPTO;ENABLE_SNM;NET_4_5</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -53,7 +53,7 @@
     <Reference Include="System.Xml" />
     <Reference Include="System.Security" />
     <Reference Include="BouncyCastle.Crypto">
-      <HintPath>..\packages\BouncyCastle.1.8.2\lib\BouncyCastle.Crypto.dll</HintPath>
+      <HintPath>..\packages\BouncyCastle.1.8.5\lib\BouncyCastle.Crypto.dll</HintPath>
     </Reference>
     <Reference Include="System.Net.Http" />
   </ItemGroup>
@@ -62,7 +62,10 @@
     <Compile Include="Cryptography\ApplicationPgpSignature.cs" />
     <Compile Include="Cryptography\ApplicationPkcs7Mime.cs" />
     <Compile Include="Cryptography\ApplicationPkcs7Signature.cs" />
+    <Compile Include="Cryptography\ArcSigner.cs" />
+    <Compile Include="Cryptography\ArcVerifier.cs" />
     <Compile Include="Cryptography\AsymmetricAlgorithmExtensions.cs" />
+    <Compile Include="Cryptography\AuthenticationResults.cs" />
     <Compile Include="Cryptography\BouncyCastleCertificateExtensions.cs" />
     <Compile Include="Cryptography\BouncyCastleSecureMimeContext.cs" />
     <Compile Include="Cryptography\CertificateNotFoundException.cs" />
@@ -78,11 +81,16 @@
     <Compile Include="Cryptography\DkimBodyFilter.cs" />
     <Compile Include="Cryptography\DkimCanonicalizationAlgorithm.cs" />
     <Compile Include="Cryptography\DkimHashStream.cs" />
+    <Compile Include="Cryptography\DkimPublicKeyLocatorBase.cs" />
     <Compile Include="Cryptography\DkimRelaxedBodyFilter.cs" />
     <Compile Include="Cryptography\DkimSignatureAlgorithm.cs" />
     <Compile Include="Cryptography\DkimSignatureStream.cs" />
     <Compile Include="Cryptography\DkimSigner.cs" />
+    <Compile Include="Cryptography\DkimSignerBase.cs" />
     <Compile Include="Cryptography\DkimSimpleBodyFilter.cs" />
+    <Compile Include="Cryptography\DkimVerifier.cs" />
+    <Compile Include="Cryptography\DkimVerifierBase.cs" />
+    <Compile Include="Cryptography\Ed25519DigestSigner.cs" />
     <Compile Include="Cryptography\EncryptionAlgorithm.cs" />
     <Compile Include="Cryptography\GnuPGContext.cs" />
     <Compile Include="Cryptography\IDigitalCertificate.cs" />
@@ -102,6 +110,7 @@
     <Compile Include="Cryptography\PrivateKeyNotFoundException.cs" />
     <Compile Include="Cryptography\PublicKeyAlgorithm.cs" />
     <Compile Include="Cryptography\PublicKeyNotFoundException.cs" />
+    <Compile Include="Cryptography\RsaSignaturePaddingScheme.cs" />
     <Compile Include="Cryptography\SecureMailboxAddress.cs" />
     <Compile Include="Cryptography\SecureMimeContext.cs" />
     <Compile Include="Cryptography\SecureMimeDigitalCertificate.cs" />

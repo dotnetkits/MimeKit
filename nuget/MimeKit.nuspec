@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata minClientVersion="2.12">
     <id>MimeKit</id>
-    <version>2.1.5.1</version>
+    <version>2.3.0</version>
     <title>MimeKit</title>
     <authors>Jeffrey Stedfast</authors>
     <owners>Jeffrey Stedfast</owners>
@@ -26,24 +26,32 @@
     </description>
     <summary>An Open Source library for creating and parsing MIME, S/MIME and PGP messages on desktop and mobile platforms.</summary>
     <releaseNotes>
-* Updated the BouncyCastle assemblies to version 1.8.5 for iOS and Android.
-* Fixed a possible NullReferenceException when decoding S/MIME digital signatures.
-* Fixed the netstandard2.0 dependencies to no longer explicitly include System.Net.Http. (issue #482)
-* Override Equals(object) and GetHashCode() for InternetAddress and InternetAddressList. (issue #481)
-* Fixed TnefReader.Dispose() to avoid a potential NullReferenceException if double disposed.
-* Fixed the Message-Id, Content-Id, References and In-Reply-To parsers to be more liberal in what they accept in terms of the `msg-id` token.
-* Changed the Header encoding logic for the In-Reply-To header to not rfc2047 encode the value even if it is longer than the suggested line-length. (issue #479)
-* Reduced netstandard dependencies. (issue #475)
+* Fixed MultipartRelated to fall back to the multipart/related type parameter when locating the Root. (issue #489)
+* Improved Authentication-Results parser to handle non-standard syntax. (issue #490)
+* When FormatOptions.AllowMixedHeaderCharsets is disabled, always use the user-specified charset. Previously this could/would still use us-ascii and/or iso-8859-1 if the entire header could fit within one of those charsets. (issue #493)
+* Fixed the line length calculations in the BestEncodingFilter. (issue #497)
+* Fixed Multipart to properly ensure the epilogue ends w/ a new-line when FormatOptions.EnsureNewLine is true. (issue #499)
+* Modified Multipart.WriteTo[Async] to not ensure that a Content-Type boundary parameter has been set. This code-path was only hit if the multipart was parsed by the parser and did not have a boundary parameter in the first place. In the interest of preserving byte-for-byte compatibility with the original input, this sanity check has been removed. (issue #499)
     </releaseNotes>
     <copyright>Xamarin Inc.</copyright>
     <language>en-US</language>
-    <tags>mime encryption dkim security smime s/mime openpgp pgp mbox mail email parser tnef net45 netstandard netstandard1.3 netstandard1.6 netstandard2.0 xamarin android ios monodroid monoandroid win8 wp81</tags>
+    <tags>mime encryption arc dkim security smime s/mime openpgp pgp mbox mail email parser tnef net45 netstandard netstandard1.3 netstandard1.6 netstandard2.0 xamarin android ios monodroid monoandroid win8 wp81</tags>
     <frameworkAssemblies>
       <frameworkAssembly assemblyName="System" targetFramework=".NETFramework4.5" />
       <frameworkAssembly assemblyName="System.Core" targetFramework=".NETFramework4.5" />
       <frameworkAssembly assemblyName="System.Data" targetFramework=".NETFramework4.5" />
       <frameworkAssembly assemblyName="System.Security" targetFramework=".NETFramework4.5" />
       <frameworkAssembly assemblyName="System.Net.Http" targetFramework=".NETFramework4.5" />
+      <frameworkAssembly assemblyName="System" targetFramework=".NETFramework4.6" />
+      <frameworkAssembly assemblyName="System.Core" targetFramework=".NETFramework4.6" />
+      <frameworkAssembly assemblyName="System.Data" targetFramework=".NETFramework4.6" />
+      <frameworkAssembly assemblyName="System.Security" targetFramework=".NETFramework4.6" />
+      <frameworkAssembly assemblyName="System.Net.Http" targetFramework=".NETFramework4.6" />
+      <frameworkAssembly assemblyName="System" targetFramework=".NETFramework4.7" />
+      <frameworkAssembly assemblyName="System.Core" targetFramework=".NETFramework4.7" />
+      <frameworkAssembly assemblyName="System.Data" targetFramework=".NETFramework4.7" />
+      <frameworkAssembly assemblyName="System.Security" targetFramework=".NETFramework4.7" />
+      <frameworkAssembly assemblyName="System.Net.Http" targetFramework=".NETFramework4.7" />
       <frameworkAssembly assemblyName="System" targetFramework="monoandroid" />
       <frameworkAssembly assemblyName="System.Core" targetFramework="monoandroid" />
       <frameworkAssembly assemblyName="System.Data" targetFramework="monoandroid" />
@@ -55,7 +63,13 @@
     </frameworkAssemblies>
     <dependencies>
       <group targetFramework="net45">
-        <dependency id="BouncyCastle" version="1.8.2" />
+        <dependency id="BouncyCastle" version="1.8.5" />
+      </group>
+      <group targetFramework="net46">
+        <dependency id="BouncyCastle" version="1.8.5" />
+      </group>
+      <group targetFramework="net47">
+        <dependency id="BouncyCastle" version="1.8.5" />
       </group>
       <group targetFramework="monoandroid" />
       <group targetFramework="xamarinios" />
@@ -64,27 +78,27 @@
         <dependency id="System.Globalization.Extensions" version="4.3.0" />
         <dependency id="System.Text.Encoding.CodePages" version="4.3.0" />
         <dependency id="System.Data.Common" version="4.3.0" />
-        <dependency id="Portable.BouncyCastle" version="1.8.2" />
+        <dependency id="Portable.BouncyCastle" version="1.8.5" />
       </group>
       <group targetFramework="netstandard1.6">
         <dependency id="System.Reflection.TypeExtensions" version="4.3.0" />
         <dependency id="System.Globalization.Extensions" version="4.3.0" />
         <dependency id="System.Text.Encoding.CodePages" version="4.3.0" />
         <dependency id="System.Data.Common" version="4.3.0" />
-        <dependency id="Portable.BouncyCastle" version="1.8.2" />
+        <dependency id="Portable.BouncyCastle" version="1.8.5" />
       </group>
       <group targetFramework="netstandard2.0">
         <dependency id="System.Reflection.TypeExtensions" version="4.3.0" />
         <dependency id="System.Globalization.Extensions" version="4.3.0" />
         <dependency id="System.Text.Encoding.CodePages" version="4.3.0" />
         <dependency id="System.Data.Common" version="4.3.0" />
-        <dependency id="Portable.BouncyCastle" version="1.8.2" />
+        <dependency id="Portable.BouncyCastle" version="1.8.5" />
       </group>
       <group targetFramework="portable-net45+win8">
-        <dependency id="Portable.BouncyCastle" version="1.8.2" />
+        <dependency id="Portable.BouncyCastle" version="1.8.5" />
       </group>
       <group targetFramework="portable-net45+win8+wpa81">
-        <dependency id="Portable.BouncyCastle" version="1.8.2" />
+        <dependency id="Portable.BouncyCastle" version="1.8.5" />
       </group>
     </dependencies>
   </metadata>
@@ -103,6 +117,10 @@
     <file src="..\MimeKit\bin\Release\Xamarin.iOS\MimeKit.xml" target="lib\xamarinios\MimeKit.xml" />
     <file src="..\MimeKit\bin\Release\net45\MimeKit.dll" target="lib\net45\MimeKit.dll" />
     <file src="..\MimeKit\bin\Release\net45\MimeKit.xml" target="lib\net45\MimeKit.xml" />
+    <file src="..\MimeKit\bin\Release\net46\MimeKit.dll" target="lib\net46\MimeKit.dll" />
+    <file src="..\MimeKit\bin\Release\net46\MimeKit.xml" target="lib\net46\MimeKit.xml" />
+    <file src="..\MimeKit\bin\Release\net47\MimeKit.dll" target="lib\net47\MimeKit.dll" />
+    <file src="..\MimeKit\bin\Release\net47\MimeKit.xml" target="lib\net47\MimeKit.xml" />
     <file src="..\MimeKit\bin\Release\portable\MimeKit.dll" target="lib\portable-net45+win8\MimeKit.dll" />
     <file src="..\MimeKit\bin\Release\portable\MimeKit.xml" target="lib\portable-net45+win8\MimeKit.xml" />
     <file src="..\MimeKit\bin\Release\portable\Portable.Text.Encoding.dll" target="lib\portable-net45+win8\Portable.Text.Encoding.dll" />

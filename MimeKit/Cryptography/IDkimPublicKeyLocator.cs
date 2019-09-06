@@ -41,12 +41,16 @@ namespace MimeKit.Cryptography {
 	/// <example>
 	/// <code language="c#" source="Examples\DkimVerifierExample.cs" />
 	/// </example>
-	/// <seealso cref="MimeKit.MimeMessage.Verify(MimeKit.Header,MimeKit.Cryptography.IDkimPublicKeyLocator,System.Threading.CancellationToken)"/>
-	/// <seealso cref="MimeKit.MimeMessage.VerifyAsync(MimeKit.Header,MimeKit.Cryptography.IDkimPublicKeyLocator,System.Threading.CancellationToken)"/>
+	/// <example>
+	/// <code language="c#" source="Examples\ArcVerifierExample.cs" />
+	/// </example>
+	/// <seealso cref="MimeKit.Cryptography.DkimPublicKeyLocatorBase"/>
+	/// <seealso cref="MimeKit.Cryptography.ArcVerifier"/>
+	/// <seealso cref="MimeKit.Cryptography.DkimVerifier"/>
 	public interface IDkimPublicKeyLocator
 	{
 		/// <summary>
-		/// Locate and retrieves the public key for the given domain and selector.
+		/// Locate and retrieve the public key for the given domain and selector.
 		/// </summary>
 		/// <remarks>
 		/// <para>Locates and retrieves the public key for the given domain and selector.</para>
@@ -54,6 +58,11 @@ namespace MimeKit.Cryptography {
 		/// <example>
 		/// <code language="c#" source="Examples\DkimVerifierExample.cs" />
 		/// </example>
+		/// <example>
+		/// <code language="c#" source="Examples\ArcVerifierExample.cs" />
+		/// </example>
+		/// <seealso cref="MimeKit.Cryptography.ArcVerifier"/>
+		/// <seealso cref="MimeKit.Cryptography.DkimVerifier"/>
 		/// <seealso cref="MimeKit.MimeMessage.Verify(MimeKit.Header,MimeKit.Cryptography.IDkimPublicKeyLocator,System.Threading.CancellationToken)"/>
 		/// <returns>The public key.</returns>
 		/// <param name="methods">A colon-separated list of query methods used to retrieve the public key. The default is <c>"dns/txt"</c>.</param>
@@ -63,7 +72,7 @@ namespace MimeKit.Cryptography {
 		AsymmetricKeyParameter LocatePublicKey (string methods, string domain, string selector, CancellationToken cancellationToken = default (CancellationToken));
 
 		/// <summary>
-		/// Asynchronously locate and retrieves the public key for the given domain and selector.
+		/// Asynchronously locate and retrieve the public key for the given domain and selector.
 		/// </summary>
 		/// <remarks>
 		/// <para>Locates and retrieves the public key for the given domain and selector.</para>
@@ -71,6 +80,11 @@ namespace MimeKit.Cryptography {
 		/// <example>
 		/// <code language="c#" source="Examples\DkimVerifierExample.cs" />
 		/// </example>
+		/// <example>
+		/// <code language="c#" source="Examples\ArcVerifierExample.cs" />
+		/// </example>
+		/// <seealso cref="MimeKit.Cryptography.ArcVerifier"/>
+		/// <seealso cref="MimeKit.Cryptography.DkimVerifier"/>
 		/// <seealso cref="MimeKit.MimeMessage.VerifyAsync(MimeKit.Header,MimeKit.Cryptography.IDkimPublicKeyLocator,System.Threading.CancellationToken)"/>
 		/// <returns>The public key.</returns>
 		/// <param name="methods">A colon-separated list of query methods used to retrieve the public key. The default is <c>"dns/txt"</c>.</param>

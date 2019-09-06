@@ -85,12 +85,14 @@ namespace UnitTests {
 			Assert.Throws<ArgumentNullException> (() => message.WriteTo ((string) null));
 			Assert.Throws<ArgumentNullException> (() => message.WriteTo ((Stream) null));
 			Assert.Throws<ArgumentNullException> (() => message.WriteTo (null, Stream.Null));
+			Assert.Throws<ArgumentNullException> (() => message.WriteTo ((Stream) null, true));
 			Assert.Throws<ArgumentNullException> (() => message.WriteTo (FormatOptions.Default, (Stream) null));
 			Assert.Throws<ArgumentNullException> (() => message.WriteTo (null, "fileName"));
 			Assert.Throws<ArgumentNullException> (() => message.WriteTo (FormatOptions.Default, (string) null));
 			Assert.Throws<ArgumentNullException> (async () => await message.WriteToAsync ((string) null));
 			Assert.Throws<ArgumentNullException> (async () => await message.WriteToAsync ((Stream) null));
 			Assert.Throws<ArgumentNullException> (async () => await message.WriteToAsync (null, Stream.Null));
+			Assert.Throws<ArgumentNullException> (async () => await message.WriteToAsync ((Stream) null, true));
 			Assert.Throws<ArgumentNullException> (async () => await message.WriteToAsync (FormatOptions.Default, (Stream) null));
 			Assert.Throws<ArgumentNullException> (async () => await message.WriteToAsync (null, "fileName"));
 			Assert.Throws<ArgumentNullException> (async () => await message.WriteToAsync (FormatOptions.Default, (string) null));
@@ -98,6 +100,8 @@ namespace UnitTests {
 			Assert.Throws<ArgumentNullException> (() => message.Sign (null, DigestAlgorithm.Sha1));
 			Assert.Throws<ArgumentNullException> (() => message.Encrypt (null));
 			Assert.Throws<ArgumentNullException> (() => message.SignAndEncrypt (null));
+
+			Assert.Throws<ArgumentNullException> (() => MimeMessage.CreateFromMailMessage (null));
 		}
 
 		[Test]
@@ -201,6 +205,31 @@ Just for fun....  -- Nathaniel<nl>
 					var result = Encoding.UTF8.GetString (serialized.ToArray ());
 
 					Assert.AreEqual (rawMessageText, result, "Reserialized (async) message is not identical to the original.");
+				}
+
+				var index = rawMessageText.IndexOf ("\n\n", StringComparison.Ordinal);
+				var headersOnly = rawMessageText.Substring (0, index + 2);
+
+				using (var serialized = new MemoryStream ()) {
+					var options = FormatOptions.Default.Clone ();
+					options.NewLineFormat = NewLineFormat.Unix;
+
+					message.WriteTo (options, serialized, true);
+
+					var result = Encoding.UTF8.GetString (serialized.ToArray ());
+
+					Assert.AreEqual (headersOnly, result, "Reserialized headers are not identical to the original.");
+				}
+
+				using (var serialized = new MemoryStream ()) {
+					var options = FormatOptions.Default.Clone ();
+					options.NewLineFormat = NewLineFormat.Unix;
+
+					await message.WriteToAsync (options, serialized, true);
+
+					var result = Encoding.UTF8.GetString (serialized.ToArray ());
+
+					Assert.AreEqual (headersOnly, result, "Reserialized headers (async) are not identical to the original.");
 				}
 			}
 		}
@@ -370,6 +399,215 @@ Content-ID: <spankulate4@hubba.hubba.hubba>
 		}
 
 		[Test]
+		public async Task TestReserializationEpilogue ()
+		{
+			string rawMessageText = @"From: Example Test <test@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+   boundary=""simple boundary""
+
+This is the preamble.
+
+--simple boundary
+Content-TypeS: text/plain
+
+This is a test.
+
+--simple boundary
+Content-Type: text/plain
+Content-Disposition: attachment
+Content-Transfer-Encoding: 7bit
+
+Another test.
+
+--simple boundary--
+
+
+This is the epilogue.".Replace ("\r\n", "\n");
+
+			using (var source = new MemoryStream (Encoding.UTF8.GetBytes (rawMessageText))) {
+				var parser = new MimeParser (source, MimeFormat.Default);
+				var message = parser.ParseMessage ();
+
+				using (var serialized = new MemoryStream ()) {
+					var options = FormatOptions.Default.Clone ();
+					options.NewLineFormat = NewLineFormat.Unix;
+
+					message.WriteTo (options, serialized);
+
+					var result = Encoding.UTF8.GetString (serialized.ToArray ());
+
+					Assert.AreEqual (rawMessageText, result, "Reserialized message is not identical to the original.");
+				}
+
+				using (var serialized = new MemoryStream ()) {
+					var options = FormatOptions.Default.Clone ();
+					options.NewLineFormat = NewLineFormat.Unix;
+
+					await message.WriteToAsync (options, serialized);
+
+					var result = Encoding.UTF8.GetString (serialized.ToArray ());
+
+					Assert.AreEqual (rawMessageText, result, "Reserialized (async) message is not identical to the original.");
+				}
+
+				using (var serialized = new MemoryStream ()) {
+					var options = FormatOptions.Default.Clone ();
+					options.NewLineFormat = NewLineFormat.Unix;
+					options.EnsureNewLine = true;
+
+					message.WriteTo (options, serialized);
+
+					var result = Encoding.UTF8.GetString (serialized.ToArray ());
+
+					Assert.AreEqual (rawMessageText + "\n", result, "Reserialized message is not identical to the original (EnsureNewLine).");
+				}
+
+				using (var serialized = new MemoryStream ()) {
+					var options = FormatOptions.Default.Clone ();
+					options.NewLineFormat = NewLineFormat.Unix;
+					options.EnsureNewLine = true;
+
+					await message.WriteToAsync (options, serialized);
+
+					var result = Encoding.UTF8.GetString (serialized.ToArray ());
+
+					Assert.AreEqual (rawMessageText + "\n", result, "Reserialized (async) message is not identical to the original (EnsureNewLine).");
+				}
+			}
+		}
+
+		[Test]
+		public async Task TestReserializationMultipartPreambleNoBoundary ()
+		{
+			string rawMessageText = @"From: Example Test <test@example.com>
+Content-Type: multipart/mixed
+
+This is the preamble.
+.".Replace ("\r\n", "\n");
+
+			using (var source = new MemoryStream (Encoding.UTF8.GetBytes (rawMessageText))) {
+				var parser = new MimeParser (source, MimeFormat.Default);
+				var message = parser.ParseMessage ();
+
+				using (var serialized = new MemoryStream ()) {
+					var options = FormatOptions.Default.Clone ();
+					options.NewLineFormat = NewLineFormat.Unix;
+
+					message.WriteTo (options, serialized);
+
+					var result = Encoding.UTF8.GetString (serialized.ToArray ());
+
+					Assert.AreEqual (rawMessageText, result, "Reserialized message is not identical to the original.");
+				}
+
+				using (var serialized = new MemoryStream ()) {
+					var options = FormatOptions.Default.Clone ();
+					options.NewLineFormat = NewLineFormat.Unix;
+
+					await message.WriteToAsync (options, serialized);
+
+					var result = Encoding.UTF8.GetString (serialized.ToArray ());
+
+					Assert.AreEqual (rawMessageText, result, "Reserialized (async) message is not identical to the original.");
+				}
+
+				using (var serialized = new MemoryStream ()) {
+					var options = FormatOptions.Default.Clone ();
+					options.NewLineFormat = NewLineFormat.Unix;
+					options.EnsureNewLine = true;
+
+					message.WriteTo (options, serialized);
+
+					var result = Encoding.UTF8.GetString (serialized.ToArray ());
+
+					Assert.AreEqual (rawMessageText + "\n", result, "Reserialized message is not identical to the original (EnsureNewLine).");
+				}
+
+				using (var serialized = new MemoryStream ()) {
+					var options = FormatOptions.Default.Clone ();
+					options.NewLineFormat = NewLineFormat.Unix;
+					options.EnsureNewLine = true;
+
+					await message.WriteToAsync (options, serialized);
+
+					var result = Encoding.UTF8.GetString (serialized.ToArray ());
+
+					Assert.AreEqual (rawMessageText + "\n", result, "Reserialized (async) message is not identical to the original (EnsureNewLine).");
+				}
+			}
+		}
+
+		[Test]
+		public async Task TestReserializationInvalidHeaders ()
+		{
+			string rawMessageText = @"From: Example Test <test@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+   boundary=""simple boundary""
+Example: test
+Test
+Test Test
+Test:
+Test: 
+Test: Test
+Test Example:
+
+This is the preamble.
+
+--simple boundary
+Content-TypeS: text/plain
+
+This is a test.
+
+--simple boundary
+Content-Type: text/plain;
+Content-Disposition: attachment;
+Content-Transfer-Encoding: test;
+Content-Transfer-Encoding: binary;
+Test Test Test: Test Test
+Te$t($)*$= Test Test: Abc def
+test test = test
+test test :: test
+filename=""test.txt""
+
+Another test.
+
+--simple boundary--
+
+
+This is the epilogue.
+".Replace ("\r\n", "\n");
+
+			using (var source = new MemoryStream (Encoding.UTF8.GetBytes (rawMessageText))) {
+				var parser = new MimeParser (source, MimeFormat.Default);
+				var message = parser.ParseMessage ();
+
+				using (var serialized = new MemoryStream ()) {
+					var options = FormatOptions.Default.Clone ();
+					options.NewLineFormat = NewLineFormat.Unix;
+
+					message.WriteTo (options, serialized);
+
+					var result = Encoding.UTF8.GetString (serialized.ToArray ());
+
+					Assert.AreEqual (rawMessageText, result, "Reserialized message is not identical to the original.");
+				}
+
+				using (var serialized = new MemoryStream ()) {
+					var options = FormatOptions.Default.Clone ();
+					options.NewLineFormat = NewLineFormat.Unix;
+
+					await message.WriteToAsync (options, serialized);
+
+					var result = Encoding.UTF8.GetString (serialized.ToArray ());
+
+					Assert.AreEqual (rawMessageText, result, "Reserialized (async) message is not identical to the original.");
+				}
+			}
+		}
+
+		[Test]
 		public void TestMailMessageToMimeMessage ()
 		{
 			var mail = new MailMessage ();
@@ -381,6 +619,7 @@ Content-ID: <spankulate4@hubba.hubba.hubba>
 			mail.Bcc.Add (new MailAddress ("bcc@bcc.com", "The Blind Carbon-Copied Recipient"));
 			mail.Subject = "This is the message subject";
 			mail.Priority = MailPriority.High;
+			mail.Headers.Add ("X-MimeKit-Test", "does this get copied, too?");
 			mail.Body = "This is plain text.";
 
 			//var text = new MemoryStream (Encoding.ASCII.GetBytes ("This is plain text."), false);
@@ -414,6 +653,7 @@ Content-ID: <spankulate4@hubba.hubba.hubba>
 			Assert.AreEqual (mail.Bcc[0].Address, ((MailboxAddress) message.Bcc[0]).Address, "The bcc addresses do not match.");
 			Assert.AreEqual (mail.Subject, message.Subject, "The message subjects do not match.");
 			Assert.AreEqual (MessagePriority.Urgent, message.Priority, "The message priority does not match.");
+			Assert.AreEqual (mail.Headers["X-MimeKit-Test"], message.Headers["X-MimeKit-Test"], "The X-MimeKit-Test headers do not match");
 			Assert.IsInstanceOf<Multipart> (message.Body, "The top-level MIME part should be a multipart/mixed.");
 
 			var mixed = (Multipart) message.Body;
@@ -443,6 +683,17 @@ Content-ID: <spankulate4@hubba.hubba.hubba>
 			Assert.AreEqual ("id@jpeg", jpeg.ContentId);
 			Assert.AreEqual ("image/jpeg", jpeg.ContentType.MimeType);
 			Assert.AreEqual ("link", jpeg.ContentLocation.OriginalString);
+
+			// Test other priorities
+			mail.Priority = MailPriority.Low;
+			message = (MimeMessage) mail;
+
+			Assert.AreEqual (MessagePriority.NonUrgent, message.Priority, "The message priority does not match.");
+
+			mail.Priority = MailPriority.Normal;
+			message = (MimeMessage) mail;
+
+			Assert.AreEqual (MessagePriority.Normal, message.Priority, "The message priority does not match.");
 		}
 
 		[Test]
