@@ -1,5 +1,5 @@
 ﻿//
-// RsaEncryptionPaddingScheme.cs
+// HtmlTagIdTests.cs
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
@@ -24,24 +24,39 @@
 // THE SOFTWARE.
 //
 
-namespace MimeKit.Cryptography {
-	/// <summary>
-	/// The RSA encryption padding schemes used by S/MIME.
-	/// </summary>
-	/// <remarks>
-	/// The RSA encryption padding schemes used by S/MIME as described in
-	/// <a href="https://tools.ietf.org/html/rfc8017">rfc8017</a>.
-	/// </remarks>
-	public enum RsaEncryptionPaddingScheme
-	{
-		/// <summary>
-		/// The PKCS #1 v1.5 encryption padding scheme.
-		/// </summary>
-		Pkcs1,
+using MimeKit.Text;
 
-		/// <summary>
-		/// The Optimal Asymmetric Encryption Padding (OAEP) scheme.
-		/// </summary>
-		Oaep
+using NUnit.Framework;
+
+namespace UnitTests.Text {
+	[TestFixture]
+	public class HtmlTagIdTests
+	{
+		[Test]
+		public void TestToHtmlTagId ()
+		{
+			Assert.AreEqual (HtmlTagId.Unknown, "".ToHtmlTagId (), "string.Empty");
+			Assert.AreEqual (HtmlTagId.Comment, "!".ToHtmlTagId (), "!");
+			Assert.AreEqual (HtmlTagId.Comment, "!blah".ToHtmlTagId (), "!blah");
+			Assert.AreEqual (HtmlTagId.A, "a".ToHtmlTagId (), "a");
+			Assert.AreEqual (HtmlTagId.A, "A".ToHtmlTagId (), "A");
+			Assert.AreEqual (HtmlTagId.Font, "font".ToHtmlTagId (), "font");
+			Assert.AreEqual (HtmlTagId.Font, "FONT".ToHtmlTagId (), "FONT");
+			Assert.AreEqual (HtmlTagId.Font, "FoNt".ToHtmlTagId (), "FoNt");
+		}
+
+		[Test]
+		public void TestIsFormattingElement ()
+		{
+			var formattingElements = new[] { "a", "b", "big", "code", "em", "font", "i", "nobr", "s", "small", "strike", "strong", "tt", "u" };
+
+			foreach (var element in formattingElements) {
+				var tag = element.ToHtmlTagId ();
+
+				Assert.IsTrue (tag.IsFormattingElement (), element);
+			}
+
+			Assert.IsFalse ("body".ToHtmlTagId ().IsFormattingElement (), "body");
+		}
 	}
 }
