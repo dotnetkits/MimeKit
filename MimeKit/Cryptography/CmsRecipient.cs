@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,9 +29,7 @@ using System.IO;
 
 using Org.BouncyCastle.X509;
 
-#if !PORTABLE && !NETSTANDARD
 using X509Certificate2 = System.Security.Cryptography.X509Certificates.X509Certificate2;
-#endif
 
 namespace MimeKit.Cryptography {
 	/// <summary>
@@ -117,7 +115,6 @@ namespace MimeKit.Cryptography {
 			EncryptionAlgorithms = Certificate.GetEncryptionAlgorithms ();
 		}
 
-#if !PORTABLE
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.CmsRecipient"/> class.
 		/// </summary>
@@ -175,9 +172,8 @@ namespace MimeKit.Cryptography {
 
 			EncryptionAlgorithms = Certificate.GetEncryptionAlgorithms ();
 		}
-#endif
 
-#if !PORTABLE && !NETSTANDARD
+#if !NETSTANDARD1_3 && !NETSTANDARD1_6
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.CmsRecipient"/> class.
 		/// </summary>
@@ -243,6 +239,18 @@ namespace MimeKit.Cryptography {
 		/// </remarks>
 		/// <value>The encryption algorithms.</value>
 		public EncryptionAlgorithm[] EncryptionAlgorithms {
+			get; set;
+		}
+
+		/// <summary>
+		/// Get or set the RSA key encryption padding.
+		/// </summary>
+		/// <remarks>
+		/// <para>Gets or sets the padding to use for key encryption when
+		/// the <see cref="Certificate"/>'s public key is an RSA key.</para>
+		/// </remarks>
+		/// <value>The encryption padding scheme.</value>
+		public RsaEncryptionPadding RsaEncryptionPadding {
 			get; set;
 		}
 	}

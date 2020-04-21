@@ -1,5 +1,118 @@
 # Release Notes
 
+### MimeKit 2.6.0 (2020-04-03)
+
+* Fixed the MimeEntity.ContentId setter to use ParseUtils.TryParseMsgId() instead of
+  MailboxAddress.TryParse() so that it is more lenient in what it accepts.
+  (issue [#542](https://github.com/jstedfast/MimeKit/issues/542))
+* Added an HtmlTokenizer.IgnoreTruncatedTags property which is useful when working with
+  truncated HTML.
+* Optimized the heck out of HtmlEntityDecoder.
+* Added a TextPart.Format property for a quick way to determine the type of text it
+  contains.
+* Added text/plain and text/html preview/snippet generators (PlainTextPreviewer and
+  HtmlTextPreviewer, respectively). This is part of a larger improvement to MailKit's
+  text preview feature for IMAP.
+  (MailKit issue [#1001](https://github.com/jstedfast/MailKit/issues/1001))
+* Fixed SqlCertificateDatabase to accept null SubjectKeyIdentifiers.
+* Changed Header.FormatRawValue() to be protected virtual and added Header.SetRawValue()
+  to allow developers to override the default formatting behavior by either subclassing
+  Header or by calling header.SetRawValue().
+  (issue [#546](https://github.com/jstedfast/MimeKit/issues/546))
+* Switched MimeKit for Android and iOS over to using Portable.BouncyCastle.
+* Added MimeTypes.Register() to allow developers to register their own mime-type mappings
+  to file extensions.
+
+### MimeKit 2.5.2 (2020-03-14)
+
+* Updated net46, net47, and net48 builds to reference Portable.BouncyCastle instead of
+  the standard BouncyCastle package, just like the netstandard builds.
+  (issue [#540](https://github.com/jstedfast/MimeKit/issues/540))
+* Fixed extraction of TNEF EmbeddedMessage attachment data to skip the leading GUID.
+  (issue [#538](https://github.com/jstedfast/MimeKit/issues/538))
+* Added a few more TNEF property tags.
+* Fixed the HtmlEntityDecoder to require some named attributes to end with a `;`.
+
+### MimeKit 2.5.1 (2020-02-15)
+
+* Fixed parsing of email addresses containing unicode or other types of 8-bit text.
+  (issue [#536](https://github.com/jstedfast/MimeKit/issues/536))
+* Added a MimeTypes.TryGetExtension() method to try and get a file name extension
+  based on a mime-type.
+  (issue [#534](https://github.com/jstedfast/MimeKit/issues/534))
+* Updated mime-type mappings.
+
+### MimeKit 2.5.0 (2020-01-18)
+
+* Fixed message reserialization after prepending headers.
+  (issue [#524](https://github.com/jstedfast/MimeKit/issues/524))
+* Added a ContentType.CharsetEncoding property.
+  (issue [#526](https://github.com/jstedfast/MimeKit/issues/526))
+* Allow empty prop-spec token values in Authentication-Results headers.
+  (issue [#527](https://github.com/jstedfast/MimeKit/issues/527))
+* Added logic to quote Authentication-Results pvalue tokens if needed.
+* Added support for converting RSACng keys into BouncyCastle keys for
+  net4x versions that support it.
+* Added support for RSAES-OAEP for the BouncyCastle backend.
+  (issue [#528](https://github.com/jstedfast/MimeKit/issues/528))
+* Updated and changed the API for RSASSA-PSS. CmsSigner now has a
+  RsaSignaturePadding property which obsoletes the previous
+  RsaSignaturePaddingScheme property.
+* Added more columns to the default SQLite database CERTIFICATES table
+  that allow more optimal SQL searches for certificates given various
+  matching criteria.
+* Fixed WindowsSecureMimeContext.Decrypt() to make sure it doesn't stop
+  at the first failed recipient.
+  (issue [#530](https://github.com/jstedfast/MimeKit/issues/530))
+* Fixed splitting and reassembly of message/partial messages.
+* Improved handling of Office365 Authentication-Results headers by adding
+  a Office365AuthenticationServiceIdentifier property to the
+  AuthenticationMethodResult class.
+* Fixed mailbox address parser to be more lenient about `"["` and `"]"`
+  characters in the display-name.
+  (issue [#532](https://github.com/jstedfast/MimeKit/issues/532))
+
+### MimeKit 2.4.1 (2019-11-10)
+
+* Don't use PublicSign on non-Windows NT machines when building.
+  (issue [#516](https://github.com/jstedfast/MimeKit/issues/516))
+* Improved BouncyCastleSecureMimeContext logic for building certificate chains so that
+  certificate chains are included in the S/MIME signature.
+  (issue [#515](https://github.com/jstedfast/MimeKit/issues/515))
+* Improved SqlCertificateDatabase.Find() by using more IX509Selector properties.
+* Relaxed the Authentication-Results header parser a bit to allow '/' in pvalue tokens.
+  (issue [#518](https://github.com/jstedfast/MimeKit/issues/518))
+
+### MimeKit 2.4.0 (2019-11-02)
+
+* Added the `text/csv` mime-type to the `MimeTypes` mapping table for files with a .csv extension.
+* Expanded the .NETStandard API to match the .NET 4.5 API, so .NETStandard is now complete.
+* Dropped support for .NETPortable and WindowsPhone/Universal v8.1.
+* Added a net48 assembly to the NuGet package.
+* Improved HTML tokenizer performance.
+* Fixed X509Crl.IsDelta for CRLs without extensions.
+  (issue [#513](https://github.com/jstedfast/MimeKit/issues/513))
+* Added support for `message/global-delivery-status`, `message/global-disposition-notification`,
+  and `message/global-headers` to `MimeParser`.
+  (issue [#514](https://github.com/jstedfast/MimeKit/issues/514))
+* Fixed S/MIME signatures generated by a TemporarySecureMimeContext to include the certificate chain.
+  (issue [#515](https://github.com/jstedfast/MimeKit/issues/515))
+
+### MimeKit 2.3.2 (2019-10-12)
+
+* Fixed reserialization of message/rfc822 parts to not add an extra new-line sequence
+  to the end of the message. (issue [#510](https://github.com/jstedfast/MimeKit/issues/510))
+* Fixed DefaultSecureMimeContext to build the cert chain outside of the private key query.
+  (issue [#508](https://github.com/jstedfast/MimeKit/issues/508))
+* Modified the Message-Id parser to gobble ctrl chars in the local-part.
+* Fixed some buglets in the TextToFlowed converter involving space-stuffing lines.
+* Fixed BodyBuilder logic for constructing a body with an HtmlBody set to string.Empty.
+  (issue [#506](https://github.com/jstedfast/MimeKit/issues/506))
+* Fixed potential memory leaks in WindowsSecureMimeContext and BouncyCastleSecureMimeContext
+  in the Export() methods in cases where an exception is throw while adding certificates.
+* Removed MimeKit.Cryptography.NpgsqlCertificateDatabase. It is unlikely anyone actually
+  uses this.
+
 ### MimeKit 2.3.1 (2019-09-08)
 
 * Updated CmsSigner's default DigestAlgorithm to Sha256 instead of Sha1 to match

@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,10 +32,6 @@ using System.Threading;
 using System.Globalization;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-
-#if PORTABLE
-using Encoding = Portable.Text.Encoding;
-#endif
 
 #if ENABLE_SNM
 using System.Net.Mail;
@@ -994,7 +990,7 @@ namespace MimeKit {
 			using (var memory = new MemoryStream ()) {
 				WriteTo (FormatOptions.Default, memory);
 
-#if !PORTABLE && !NETSTANDARD
+#if !NETSTANDARD1_3 && !NETSTANDARD1_6
 				var buffer = memory.GetBuffer ();
 #else
 				var buffer = memory.ToArray ();
@@ -1341,7 +1337,6 @@ namespace MimeKit {
 			return WriteToAsync (FormatOptions.Default, stream, false, cancellationToken);
 		}
 
-#if !PORTABLE
 		/// <summary>
 		/// Write the message to the specified file.
 		/// </summary>
@@ -1511,7 +1506,6 @@ namespace MimeKit {
 		{
 			return WriteToAsync (FormatOptions.Default, fileName, cancellationToken);
 		}
-#endif
 
 		MailboxAddress GetMessageSigner ()
 		{
@@ -2149,6 +2143,17 @@ namespace MimeKit {
 		{
 			int mesgIndex = 0, bodyIndex = 0;
 
+			// write all of the prepended message headers first
+			while (mesgIndex < Headers.Count) {
+				var mesgHeader = Headers[mesgIndex];
+				if (mesgHeader.Offset.HasValue)
+					break;
+
+				yield return mesgHeader;
+				mesgIndex++;
+			}
+
+			// now merge the message and body headers as they appeared in the raw message
 			while (mesgIndex < Headers.Count && bodyIndex < Body.Headers.Count) {
 				var bodyHeader = Body.Headers[bodyIndex];
 				if (!bodyHeader.Offset.HasValue)
@@ -2791,7 +2796,6 @@ namespace MimeKit {
 			return LoadAsync (ParserOptions.Default, stream, false, cancellationToken);
 		}
 
-#if !PORTABLE
 		/// <summary>
 		/// Load a <see cref="MimeMessage"/> from the specified file.
 		/// </summary>
@@ -2975,7 +2979,6 @@ namespace MimeKit {
 		{
 			return LoadAsync (ParserOptions.Default, fileName, cancellationToken);
 		}
-#endif // !PORTABLE
 
 #if ENABLE_SNM
 		static MimePart GetMimePart (AttachmentBase item)

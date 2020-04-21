@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ using System.IO;
 using System.Data;
 using System.Text;
 using System.Data.Common;
+using System.Collections.Generic;
 
 #if __MOBILE__
 using Mono.Data.Sqlite;
@@ -49,9 +50,44 @@ namespace MimeKit.Cryptography {
 	public class SqliteCertificateDatabase : SqlCertificateDatabase
 	{
 #if !__MOBILE__
-		static readonly Type sqliteConnectionStringBuilderClass;
-		static readonly Type sqliteConnectionClass;
-		static readonly Assembly sqliteAssembly;
+		class SQLiteAssembly
+		{
+			public Type ConnectionStringBuilderType { get; private set; }
+			public Type ConnectionType { get; private set; }
+			public Assembly Assembly { get; private set; }
+
+			public PropertyInfo ConnectionStringProperty { get; private set; }
+			public PropertyInfo DateTimeFormatProperty { get; private set; }
+			public PropertyInfo DataSourceProperty { get; private set; }
+
+			public static SQLiteAssembly Load (string assemblyName)
+			{
+				try {
+					int dot = assemblyName.LastIndexOf ('.');
+					var prefix = assemblyName.Substring (dot + 1);
+
+					var assembly = Assembly.Load (new AssemblyName (assemblyName));
+					var builderType = assembly.GetType (assemblyName + "." + prefix + "ConnectionStringBuilder");
+					var connectionType = assembly.GetType (assemblyName + "." + prefix + "Connection");
+					var connectionString = builderType.GetProperty ("ConnectionString");
+					var dateTimeFormat = builderType.GetProperty ("DateTimeFormat");
+					var dataSource = builderType.GetProperty ("DataSource");
+
+					return new SQLiteAssembly {
+						Assembly = assembly,
+						ConnectionType = connectionType,
+						ConnectionStringBuilderType = builderType,
+						ConnectionStringProperty = connectionString,
+						DateTimeFormatProperty = dateTimeFormat,
+						DataSourceProperty = dataSource
+					};
+				} catch {
+					return null;
+				}
+			}
+		}
+
+		static readonly SQLiteAssembly sqliteAssembly;
 #endif
 
 		// At class initialization we try to use reflection to load the
@@ -60,60 +96,65 @@ namespace MimeKit.Cryptography {
 		// assembly.
 		static SqliteCertificateDatabase ()
 		{
-#if NETSTANDARD
-			try {
-				if ((sqliteAssembly = Assembly.Load (new AssemblyName ("Microsoft.Data.Sqlite"))) != null) {
-					sqliteConnectionClass = sqliteAssembly.GetType ("Microsoft.Data.Sqlite.SqliteConnection");
-					sqliteConnectionStringBuilderClass = sqliteAssembly.GetType ("Microsoft.Data.Sqlite.SqliteConnectionStringBuilder");
-
-					// Make sure that the runtime can load the native sqlite library
-					var builder = Activator.CreateInstance (sqliteConnectionStringBuilderClass);
-
-					IsAvailable = true;
-				}
-			} catch (FileNotFoundException) {
-			} catch (FileLoadException) {
-			} catch (BadImageFormatException) {
-			}
-#elif !__MOBILE__
-			var platform = Environment.OSVersion.Platform;
-
-			try {
-				// Mono.Data.Sqlite will only work on Unix-based platforms and 32-bit Windows platforms.
-				if (platform == PlatformID.Unix || platform == PlatformID.MacOSX || IntPtr.Size == 4) {
-					if ((sqliteAssembly = Assembly.Load ("Mono.Data.Sqlite")) != null) {
-						sqliteConnectionClass = sqliteAssembly.GetType ("Mono.Data.Sqlite.SqliteConnection");
-						sqliteConnectionStringBuilderClass = sqliteAssembly.GetType ("Mono.Data.Sqlite.SqliteConnectionStringBuilder");
-
-						// Make sure that the runtime can load the native sqlite3 library
-						var builder = Activator.CreateInstance (sqliteConnectionStringBuilderClass);
-						sqliteConnectionStringBuilderClass.GetProperty ("DateTimeFormat").SetValue (builder, 0, null);
-
-						IsAvailable = true;
-					}
-				}
-
-				// System.Data.Sqlite is only available for Windows-based platforms.
-				if (!IsAvailable && platform != PlatformID.Unix && platform != PlatformID.MacOSX) {
-					if ((sqliteAssembly = Assembly.Load ("System.Data.SQLite")) != null) {
-						sqliteConnectionClass = sqliteAssembly.GetType ("System.Data.SQLite.SQLiteConnection");
-						sqliteConnectionStringBuilderClass = sqliteAssembly.GetType ("System.Data.SQLite.SQLiteConnectionStringBuilder");
-
-						// Make sure that the runtime can load the native sqlite3 library
-						var builder = Activator.CreateInstance (sqliteConnectionStringBuilderClass);
-						sqliteConnectionStringBuilderClass.GetProperty ("DateTimeFormat").SetValue (builder, 0, null);
-
-						IsAvailable = true;
-					}
-				}
-			} catch (FileNotFoundException) {
-			} catch (FileLoadException) {
-			} catch (BadImageFormatException) {
-			}
-#else
+#if __MOBILE__
 			IsAvailable = true;
+#else // !__MOBILE__
+#if NETFRAMEWORK || NETSTANDARD2_0 || NETCOREAPP3_0
+			var platform = Environment.OSVersion.Platform;
 #endif
+
+#if NETSTANDARD1_3 || NETSTANDARD1_6 || NETSTANDARD2_0 || NETCOREAPP3_0
+			if ((sqliteAssembly = SQLiteAssembly.Load ("Microsoft.Data.Sqlite")) != null) {
+				// Make sure that the runtime can load the native sqlite library
+				if (VerifySQLiteAssemblyIsUsable ()) {
+					IsAvailable = true;
+					return;
+				}
+			}
+#endif
+
+#if NETFRAMEWORK || NETCOREAPP3_0
+			// Mono.Data.Sqlite will only work on Unix-based platforms.
+			if (platform == PlatformID.Unix || platform == PlatformID.MacOSX) {
+				if ((sqliteAssembly = SQLiteAssembly.Load ("Mono.Data.Sqlite")) != null) {
+					// Make sure that the runtime can load the native sqlite3 library
+					if (VerifySQLiteAssemblyIsUsable ()) {
+						IsAvailable = true;
+						return;
+					}
+				}
+			}
+#endif
+
+#if NETFRAMEWORK || NETSTANDARD2_0 || NETCOREAPP3_0
+			if ((sqliteAssembly = SQLiteAssembly.Load ("System.Data.SQLite")) != null) {
+				// Make sure that the runtime can load the native sqlite3 library
+				if (VerifySQLiteAssemblyIsUsable ()) {
+					IsAvailable = true;
+					return;
+				}
+			}
+#endif
+#endif // __MOBILE__
 		}
+
+#if !__MOBILE__
+		static bool VerifySQLiteAssemblyIsUsable ()
+		{
+			// Make sure that the runtime can load the native sqlite3 library.
+			var fileName = Path.GetTempFileName ();
+
+			try {
+				var connection = CreateConnection (fileName);
+				connection.Dispose ();
+				return true;
+			} catch {
+				return false;
+			} finally {
+				File.Delete (fileName);
+			}
+		}
+#endif
 
 		internal static bool IsAvailable {
 			get; private set;
@@ -141,17 +182,14 @@ namespace MimeKit.Cryptography {
 			}
 
 #if !__MOBILE__
-			var dateTimeFormat = sqliteConnectionStringBuilderClass.GetProperty ("DateTimeFormat");
-			var builder = Activator.CreateInstance (sqliteConnectionStringBuilderClass);
+			var builder = Activator.CreateInstance (sqliteAssembly.ConnectionStringBuilderType);
 
-			sqliteConnectionStringBuilderClass.GetProperty ("DataSource").SetValue (builder, fileName, null);
+			sqliteAssembly.DataSourceProperty.SetValue (builder, fileName, null);
+			sqliteAssembly.DateTimeFormatProperty?.SetValue (builder, 0, null);
 
-			if (dateTimeFormat != null)
-				dateTimeFormat.SetValue (builder, 0, null);
+			var connectionString = (string) sqliteAssembly.ConnectionStringProperty.GetValue (builder, null);
 
-			var connectionString = (string) sqliteConnectionStringBuilderClass.GetProperty ("ConnectionString").GetValue (builder, null);
-
-			return (DbConnection) Activator.CreateInstance (sqliteConnectionClass, new [] { connectionString });
+			return (DbConnection) Activator.CreateInstance (sqliteAssembly.ConnectionType, new [] { connectionString });
 #else
 			var builder = new SqliteConnectionStringBuilder ();
 			builder.DateTimeFormat = SQLiteDateFormats.Ticks;
@@ -210,89 +248,147 @@ namespace MimeKit.Cryptography {
 		}
 
 		/// <summary>
-		/// Gets the command to create the certificates table.
+		/// Gets the columns for the specified table.
 		/// </summary>
 		/// <remarks>
-		/// Constructs the command to create a certificates table suitable for storing
-		/// <see cref="X509CertificateRecord"/> objects.
+		/// Gets the list of columns for the specified table.
 		/// </remarks>
-		/// <returns>The <see cref="System.Data.Common.DbCommand"/>.</returns>
 		/// <param name="connection">The <see cref="System.Data.Common.DbConnection"/>.</param>
-		protected override DbCommand GetCreateCertificatesTableCommand (DbConnection connection)
+		/// <param name="tableName">The name of the table.</param>
+		/// <returns>The list of columns.</returns>
+		protected override IList<DataColumn> GetTableColumns (DbConnection connection, string tableName)
 		{
-			var statement = new StringBuilder ("CREATE TABLE IF NOT EXISTS CERTIFICATES(");
-			var columns = X509CertificateRecord.ColumnNames;
+			using (var command = connection.CreateCommand ()) {
+				command.CommandText = $"PRAGMA table_info({tableName})";
+				using (var reader = command.ExecuteReader ()) {
+					var columns = new List<DataColumn> ();
 
-			for (int i = 0; i < columns.Length; i++) {
-				if (i > 0)
-					statement.Append (", ");
+					while (reader.Read ()) {
+						var column = new DataColumn ();
 
-				statement.Append (columns[i] + " ");
-				switch (columns[i]) {
-				case "ID": statement.Append ("INTEGER PRIMARY KEY AUTOINCREMENT"); break;
-				case "BASICCONSTRAINTS": statement.Append ("INTEGER NOT NULL"); break;
-				case "TRUSTED":  statement.Append ("INTEGER NOT NULL"); break;
-				case "KEYUSAGE": statement.Append ("INTEGER NOT NULL"); break;
-				case "NOTBEFORE": statement.Append ("INTEGER NOT NULL"); break;
-				case "NOTAFTER": statement.Append ("INTEGER NOT NULL"); break;
-				case "ISSUERNAME": statement.Append ("TEXT NOT NULL"); break;
-				case "SERIALNUMBER": statement.Append ("TEXT NOT NULL"); break;
-				case "SUBJECTEMAIL": statement.Append ("TEXT"); break;
-				case "FINGERPRINT": statement.Append ("TEXT NOT NULL"); break;
-				case "ALGORITHMS": statement.Append ("TEXT"); break;
-				case "ALGORITHMSUPDATED": statement.Append ("INTEGER NOT NULL"); break;
-				case "CERTIFICATE": statement.Append ("BLOB UNIQUE NOT NULL"); break;
-				case "PRIVATEKEY": statement.Append ("BLOB"); break;
+						for (int i = 0; i < reader.FieldCount; i++) {
+							var field = reader.GetName (i).ToUpperInvariant ();
+
+							switch (field) {
+							case "NAME":
+								column.ColumnName = reader.GetString (i);
+								break;
+							case "TYPE":
+								var type = reader.GetString (i);
+								switch (type) {
+								case "INTEGER": column.DataType = typeof (long); break;
+								case "BLOB": column.DataType = typeof (byte[]); break;
+								case "TEXT": column.DataType = typeof (string); break;
+								}
+								break;
+							case "NOTNULL":
+								column.AllowDBNull = !reader.GetBoolean (i);
+								break;
+							}
+						}
+
+						columns.Add (column);
+					}
+
+					return columns;
+				}
+			}
+		}
+
+		static void Build (StringBuilder statement, DataTable table, DataColumn column, ref int primaryKeys, bool create)
+		{
+			statement.Append (column.ColumnName);
+			statement.Append (' ');
+
+			if (column.DataType == typeof (long) || column.DataType == typeof (int) || column.DataType == typeof (bool)) {
+				statement.Append ("INTEGER");
+			} else if (column.DataType == typeof (byte[])) {
+				statement.Append ("BLOB");
+			} else if (column.DataType == typeof (string)) {
+				statement.Append ("TEXT");
+			} else {
+				throw new NotImplementedException ();
+			}
+
+			bool isPrimaryKey = false;
+			if (table != null && table.PrimaryKey != null && primaryKeys < table.PrimaryKey.Length) {
+				for (int i = 0; i < table.PrimaryKey.Length; i++) {
+					if (column == table.PrimaryKey[i]) {
+						statement.Append (" PRIMARY KEY");
+						isPrimaryKey = true;
+						primaryKeys++;
+						break;
+					}
 				}
 			}
 
-			statement.Append (')');
+			if (column.AutoIncrement)
+				statement.Append (" AUTOINCREMENT");
 
-			var command = connection.CreateCommand ();
+			if (column.Unique && !isPrimaryKey)
+				statement.Append (" UNIQUE");
 
-			command.CommandText = statement.ToString ();
-			command.CommandType = CommandType.Text;
-
-			return command;
+			// Note: Normally we'd want to include NOT NULL, but we can't *add* new columns with the NOT NULL restriction
+			if (create && !column.AllowDBNull)
+				statement.Append (" NOT NULL");
 		}
 
 		/// <summary>
-		/// Gets the command to create the CRLs table.
+		/// Create a table.
 		/// </summary>
 		/// <remarks>
-		/// Constructs the command to create a CRLs table suitable for storing
-		/// <see cref="X509CertificateRecord"/> objects.
+		/// Creates the specified table.
 		/// </remarks>
-		/// <returns>The <see cref="System.Data.Common.DbCommand"/>.</returns>
 		/// <param name="connection">The <see cref="System.Data.Common.DbConnection"/>.</param>
-		protected override DbCommand GetCreateCrlsTableCommand (DbConnection connection)
+		/// <param name="table">The table.</param>
+		protected override void CreateTable (DbConnection connection, DataTable table)
 		{
-			var statement = new StringBuilder ("CREATE TABLE IF NOT EXISTS CRLS(");
-			var columns = X509CrlRecord.ColumnNames;
+			var statement = new StringBuilder ("CREATE TABLE IF NOT EXISTS ");
+			int primaryKeys = 0;
 
-			for (int i = 0; i < columns.Length; i++) {
-				if (i > 0)
-					statement.Append (", ");
+			statement.Append (table.TableName);
+			statement.Append ('(');
 
-				statement.Append (columns[i] + " ");
-				switch (columns[i]) {
-				case "ID": statement.Append ("INTEGER PRIMARY KEY AUTOINCREMENT"); break;
-				case "DELTA" : statement.Append ("INTEGER NOT NULL"); break;
-				case "ISSUERNAME": statement.Append ("TEXT NOT NULL"); break;
-				case "THISUPDATE": statement.Append ("INTEGER NOT NULL"); break;
-				case "NEXTUPDATE": statement.Append ("INTEGER NOT NULL"); break;
-				case "CRL": statement.Append ("BLOB NOT NULL"); break;
-				}
+			foreach (DataColumn column in table.Columns) {
+				Build (statement, table, column, ref primaryKeys, true);
+				statement.Append (", ");
 			}
+
+			if (table.Columns.Count > 0)
+				statement.Length -= 2;
 
 			statement.Append (')');
 
-			var command = connection.CreateCommand ();
+			using (var command = connection.CreateCommand ()) {
+				command.CommandText = statement.ToString ();
+				command.CommandType = CommandType.Text;
+				command.ExecuteNonQuery ();
+			}
+		}
 
-			command.CommandText = statement.ToString ();
-			command.CommandType = CommandType.Text;
+		/// <summary>
+		/// Adds a column to a table.
+		/// </summary>
+		/// <remarks>
+		/// Adds a column to a table.
+		/// </remarks>
+		/// <param name="connection">The <see cref="System.Data.Common.DbConnection"/>.</param>
+		/// <param name="table">The table.</param>
+		/// <param name="column">The column to add.</param>
+		protected override void AddTableColumn (DbConnection connection, DataTable table, DataColumn column)
+		{
+			var statement = new StringBuilder ("ALTER TABLE ");
+			int primaryKeys = table.PrimaryKey?.Length ?? 0;
 
-			return command;
+			statement.Append (table.TableName);
+			statement.Append (" ADD COLUMN ");
+			Build (statement, table, column, ref primaryKeys, false);
+
+			using (var command = connection.CreateCommand ()) {
+				command.CommandText = statement.ToString ();
+				command.CommandType = CommandType.Text;
+				command.ExecuteNonQuery ();
+			}
 		}
 	}
 }

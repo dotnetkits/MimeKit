@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,10 +31,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-
-#if PORTABLE
-using Encoding = Portable.Text.Encoding;
-#endif
 
 using MimeKit.Utils;
 using MimeKit.IO;
@@ -294,13 +290,12 @@ namespace MimeKit {
 				}
 
 				var buffer = Encoding.UTF8.GetBytes (value);
-				MailboxAddress mailbox;
 				int index = 0;
 
-				if (!MailboxAddress.TryParse (Headers.Options, buffer, ref index, buffer.Length, false, out mailbox))
+				if (!ParseUtils.TryParseMsgId (buffer, ref index, buffer.Length, false, false, out string id))
 					throw new ArgumentException ("Invalid Content-Id format.", nameof (value));
 
-				contentId = mailbox.Address;
+				contentId = id;
 
 				SetHeader ("Content-Id", "<" + contentId + ">");
 			}
@@ -343,7 +338,7 @@ namespace MimeKit {
 			using (var memory = new MemoryStream ()) {
 				WriteTo (memory);
 
-#if !PORTABLE && !NETSTANDARD
+#if !NETSTANDARD1_3 && !NETSTANDARD1_6
 				var buffer = memory.GetBuffer ();
 #else
 				var buffer = memory.ToArray ();
@@ -608,7 +603,6 @@ namespace MimeKit {
 			return WriteToAsync (FormatOptions.Default, stream, false, cancellationToken);
 		}
 
-#if !PORTABLE
 		/// <summary>
 		/// Write the <see cref="MimeKit.MimeEntity"/> to the specified file.
 		/// </summary>
@@ -948,7 +942,6 @@ namespace MimeKit {
 		{
 			return WriteToAsync (FormatOptions.Default, fileName, cancellationToken);
 		}
-#endif // !PORTABLE
 
 		/// <summary>
 		/// Removes the header.
@@ -1397,7 +1390,6 @@ namespace MimeKit {
 			return LoadAsync (ParserOptions.Default, stream, false, cancellationToken);
 		}
 
-#if !PORTABLE
 		/// <summary>
 		/// Load a <see cref="MimeEntity"/> from the specified file.
 		/// </summary>
@@ -1581,7 +1573,6 @@ namespace MimeKit {
 		{
 			return LoadAsync (ParserOptions.Default, fileName, cancellationToken);
 		}
-#endif // !PORTABLE
 
 		/// <summary>
 		/// Load a <see cref="MimeEntity"/> from the specified content stream.

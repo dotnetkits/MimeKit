@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -42,6 +42,8 @@ using Org.BouncyCastle.Asn1;
 using Org.BouncyCastle.Pkix;
 using Org.BouncyCastle.X509;
 using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Security;
+using Org.BouncyCastle.Asn1.Cms;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Org.BouncyCastle.Asn1.X509;
 using Org.BouncyCastle.Asn1.Smime;
@@ -51,6 +53,7 @@ using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Utilities.Collections;
 
 using AttributeTable = Org.BouncyCastle.Asn1.Cms.AttributeTable;
+using IssuerAndSerialNumber = Org.BouncyCastle.Asn1.Cms.IssuerAndSerialNumber;
 
 using MimeKit.IO;
 
@@ -64,6 +67,8 @@ namespace MimeKit.Cryptography
 	/// </remarks>
 	public abstract class BouncyCastleSecureMimeContext : SecureMimeContext
 	{
+		static readonly string RsassaPssOid = PkcsObjectIdentifiers.IdRsassaPss.Id;
+
 		HttpClient client;
 
 		/// <summary>
@@ -241,25 +246,39 @@ namespace MimeKit.Cryptography
 		/// <param name="timestamp">The timestamp.</param>
 		protected abstract void UpdateSecureMimeCapabilities (X509Certificate certificate, EncryptionAlgorithm[] algorithms, DateTime timestamp);
 
-		AttributeTable AddSecureMimeCapabilities (AttributeTable signedAttributes)
+		CmsAttributeTableGenerator AddSecureMimeCapabilities (AttributeTable signedAttributes)
 		{
-			var attr = GetSecureMimeCapabilitiesAttribute ();
+			var attr = GetSecureMimeCapabilitiesAttribute (true);
 
 			// populate our signed attributes with some S/MIME capabilities
-			return signedAttributes.Add (attr.AttrType, attr.AttrValues[0]);
+			return new DefaultSignedAttributeTableGenerator (signedAttributes.Add (attr.AttrType, attr.AttrValues[0]));
 		}
 
 		Stream Sign (CmsSigner signer, Stream content, bool encapsulate)
 		{
+			var unsignedAttributes = new SimpleAttributeTableGenerator (signer.UnsignedAttributes);
 			var signedAttributes = AddSecureMimeCapabilities (signer.SignedAttributes);
 			var signedData = new CmsSignedDataStreamGenerator ();
 			var digestOid = GetDigestOid (signer.DigestAlgorithm);
+			byte[] subjectKeyId = null;
 
-			if (signer.PrivateKey is RsaKeyParameters && signer.RsaSignaturePaddingScheme == RsaSignaturePaddingScheme.Pss) {
-				signedData.AddSigner (signer.PrivateKey, signer.Certificate, PkcsObjectIdentifiers.IdRsassaPss.Id, digestOid,
-					signedAttributes, signer.UnsignedAttributes);
+			if (signer.SignerIdentifierType == SubjectIdentifierType.SubjectKeyIdentifier) {
+				var subjectKeyIdentifier = signer.Certificate.GetExtensionValue (X509Extensions.SubjectKeyIdentifier);
+				if (subjectKeyIdentifier != null) {
+					var id = (Asn1OctetString) Asn1Object.FromByteArray (subjectKeyIdentifier.GetOctets ());
+					subjectKeyId = id.GetOctets ();
+				}
+			}
+
+			if (signer.PrivateKey is RsaKeyParameters && signer.RsaSignaturePadding == RsaSignaturePadding.Pss) {
+				if (subjectKeyId == null)
+					signedData.AddSigner (signer.PrivateKey, signer.Certificate, RsassaPssOid, digestOid, signedAttributes, unsignedAttributes);
+				else
+					signedData.AddSigner (signer.PrivateKey, subjectKeyId, RsassaPssOid, digestOid, signedAttributes, unsignedAttributes);
+			} else if (subjectKeyId == null) {
+				signedData.AddSigner (signer.PrivateKey, signer.Certificate, digestOid, signedAttributes, unsignedAttributes);
 			} else {
-				signedData.AddSigner (signer.PrivateKey, signer.Certificate, digestOid, signedAttributes, signer.UnsignedAttributes);
+				signedData.AddSigner (signer.PrivateKey, subjectKeyId, digestOid, signedAttributes, unsignedAttributes);
 			}
 
 			signedData.AddCertificates (signer.CertificateChain);
@@ -428,7 +447,7 @@ namespace MimeKit.Cryptography
 		/// Build a certificate chain.
 		/// </summary>
 		/// <remarks>
-		/// <para>Builds a certificate chain for the provided certificate.</para>
+		/// <para>Builds a certificate chain for the provided certificate to include when signing.</para>
 		/// <para>This method is ideal for use with custom <see cref="GetCmsSigner"/>
 		/// implementations when it is desirable to include the certificate chain
 		/// in the signature.</para>
@@ -440,10 +459,15 @@ namespace MimeKit.Cryptography
 			var selector = new X509CertStoreSelector ();
 			selector.Certificate = certificate;
 
+			var intermediates = new X509CertificateStore ();
+			intermediates.Add (certificate);
+
 			var parameters = new PkixBuilderParameters (GetTrustedAnchors (), selector);
 			parameters.ValidityModel = PkixParameters.PkixValidityModel;
+			parameters.AddStore (intermediates);
 			parameters.AddStore (GetIntermediateCertificates ());
 			parameters.IsRevocationEnabled = false;
+			parameters.Date = new DateTimeObject (DateTime.UtcNow);
 
 			var builder = new PkixCertPathBuilder ();
 			var result = builder.Build (parameters);
@@ -458,20 +482,21 @@ namespace MimeKit.Cryptography
 
 		PkixCertPath BuildCertPath (HashSet anchors, IX509Store certificates, IX509Store crls, X509Certificate certificate, DateTime signingTime)
 		{
-			var intermediate = new X509CertificateStore ();
-			foreach (X509Certificate cert in certificates.GetMatches (null))
-				intermediate.Add (cert);
-
 			var selector = new X509CertStoreSelector ();
 			selector.Certificate = certificate;
 
-			var parameters = new PkixBuilderParameters (anchors, selector);
-			parameters.AddStore (GetIntermediateCertificates ());
-			parameters.AddStore (intermediate);
+			var intermediates = new X509CertificateStore ();
+			intermediates.Add (certificate);
 
-			var localCrls = GetCertificateRevocationLists ();
-			parameters.AddStore (localCrls);
+			foreach (X509Certificate cert in certificates.GetMatches (null))
+				intermediates.Add (cert);
+
+			var parameters = new PkixBuilderParameters (anchors, selector);
+			parameters.AddStore (intermediates);
 			parameters.AddStore (crls);
+
+			parameters.AddStore (GetIntermediateCertificates ());
+			parameters.AddStore (GetCertificateRevocationLists ());
 
 			parameters.ValidityModel = PkixParameters.PkixValidityModel;
 			parameters.IsRevocationEnabled = false;
@@ -626,7 +651,7 @@ namespace MimeKit.Cryptography
 					using (var response = await client.GetAsync (location, cancellationToken).ConfigureAwait (false))
 						await response.Content.CopyToAsync (stream).ConfigureAwait (false);
 				} else {
-#if !NETSTANDARD && !PORTABLE
+#if !NETSTANDARD1_3 && !NETSTANDARD1_6
 					cancellationToken.ThrowIfCancellationRequested ();
 
 					var request = (HttpWebRequest) WebRequest.Create (location);
@@ -957,6 +982,73 @@ namespace MimeKit.Cryptography
 			return content;
 		}
 
+		class CmsRecipientInfoGenerator : RecipientInfoGenerator
+		{
+			readonly CmsRecipient recipient;
+
+			public CmsRecipientInfoGenerator (CmsRecipient recipient)
+			{
+				this.recipient = recipient;
+			}
+
+			IWrapper CreateWrapper (AlgorithmIdentifier keyExchangeAlgorithm)
+			{
+				string name;
+
+				if (PkcsObjectIdentifiers.IdRsaesOaep.Id.Equals (keyExchangeAlgorithm.Algorithm.Id, StringComparison.Ordinal)) {
+					var oaepParameters = RsaesOaepParameters.GetInstance (keyExchangeAlgorithm.Parameters);
+					name = "RSA//OAEPWITH" + DigestUtilities.GetAlgorithmName (oaepParameters.HashAlgorithm.Algorithm) + "ANDMGF1Padding";
+				} else if (PkcsObjectIdentifiers.RsaEncryption.Id.Equals (keyExchangeAlgorithm.Algorithm.Id, StringComparison.Ordinal)) {
+					name = "RSA//PKCS1Padding";
+				} else {
+					name = keyExchangeAlgorithm.Algorithm.Id;
+				}
+
+				return WrapperUtilities.GetWrapper (name);
+			}
+
+			byte[] GenerateWrappedKey (KeyParameter contentEncryptionKey, AlgorithmIdentifier keyEncryptionAlgorithm, AsymmetricKeyParameter publicKey, SecureRandom random)
+			{
+				var keyWrapper = CreateWrapper (keyEncryptionAlgorithm);
+				var keyBytes = contentEncryptionKey.GetKey ();
+
+				keyWrapper.Init (true, new ParametersWithRandom (publicKey, random));
+
+				return keyWrapper.Wrap (keyBytes, 0, keyBytes.Length);
+			}
+
+			public RecipientInfo Generate (KeyParameter contentEncryptionKey, SecureRandom random)
+			{
+				var tbs = Asn1Object.FromByteArray (recipient.Certificate.GetTbsCertificate ());
+				var certificate = TbsCertificateStructure.GetInstance (tbs);
+				var publicKey = recipient.Certificate.GetPublicKey ();
+				var publicKeyInfo = certificate.SubjectPublicKeyInfo;
+				AlgorithmIdentifier keyEncryptionAlgorithm;
+
+				if (publicKey is RsaKeyParameters && recipient.RsaEncryptionPadding?.Scheme == RsaEncryptionPaddingScheme.Oaep) {
+					keyEncryptionAlgorithm = recipient.RsaEncryptionPadding.GetAlgorithmIdentifier ();
+				} else {
+					keyEncryptionAlgorithm = publicKeyInfo.AlgorithmID;
+				}
+
+				var encryptedKeyBytes = GenerateWrappedKey (contentEncryptionKey, keyEncryptionAlgorithm, publicKey, random);
+				RecipientIdentifier recipientIdentifier = null;
+
+				if (recipient.RecipientIdentifierType == SubjectIdentifierType.SubjectKeyIdentifier) {
+					var subjectKeyIdentifier = recipient.Certificate.GetExtensionValue (X509Extensions.SubjectKeyIdentifier);
+					recipientIdentifier = new RecipientIdentifier (subjectKeyIdentifier);
+				}
+
+				if (recipientIdentifier == null) {
+					var issuerAndSerial = new IssuerAndSerialNumber (certificate.Issuer, certificate.SerialNumber.Value);
+					recipientIdentifier = new RecipientIdentifier (issuerAndSerial);
+				}
+
+				return new RecipientInfo (new KeyTransRecipientInfo (recipientIdentifier, keyEncryptionAlgorithm,
+					new DerOctetString (encryptedKeyBytes)));
+			}
+		}
+
 		Stream Envelope (CmsRecipientCollection recipients, Stream content)
 		{
 			var unique = new HashSet<X509Certificate> ();
@@ -965,7 +1057,7 @@ namespace MimeKit.Cryptography
 
 			foreach (var recipient in recipients) {
 				if (unique.Add (recipient.Certificate)) {
-					cms.AddKeyTransRecipient (recipient.Certificate);
+					cms.AddRecipientInfoGenerator (new CmsRecipientInfoGenerator (recipient));
 					count++;
 				}
 			}
@@ -1172,7 +1264,6 @@ namespace MimeKit.Cryptography
 					continue;
 
 				var content = recipient.GetContentStream (key);
-
 				content.ContentStream.CopyTo (decryptedData, 4096);
 				return;
 			}

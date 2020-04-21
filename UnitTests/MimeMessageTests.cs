@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -102,6 +102,40 @@ namespace UnitTests {
 			Assert.Throws<ArgumentNullException> (() => message.SignAndEncrypt (null));
 
 			Assert.Throws<ArgumentNullException> (() => MimeMessage.CreateFromMailMessage (null));
+		}
+
+		[Test]
+		public void TestPrependHeader ()
+		{
+			string rawMessageText = @"Date: Fri, 22 Jan 2016 8:44:05 -0500 (EST)
+From: MimeKit Unit Tests <unit.tests@mimekit.org>
+To: MimeKit Unit Tests <unit.tests@mimekit.org>
+Subject: This is a test off prepending headers.
+Message-Id: <id@localhost.com>
+MIME-Version: 1.0
+Content-Type: text/plain
+
+This is the message body.
+".Replace ("\r\n", "\n");
+			string expected = "X-Prepended: This is the prepended header\n" + rawMessageText;
+
+			using (var source = new MemoryStream (Encoding.UTF8.GetBytes (rawMessageText))) {
+				var parser = new MimeParser (source, MimeFormat.Default);
+				var message = parser.ParseMessage ();
+
+				message.Headers.Insert (0, new Header ("X-Prepended", "This is the prepended header"));
+
+				using (var serialized = new MemoryStream ()) {
+					var options = FormatOptions.Default.Clone ();
+					options.NewLineFormat = NewLineFormat.Unix;
+
+					message.WriteTo (options, serialized);
+
+					var result = Encoding.UTF8.GetString (serialized.ToArray ());
+
+					Assert.AreEqual (expected, result, "Reserialized message is not identical to the original.");
+				}
+			}
 		}
 
 		[Test]

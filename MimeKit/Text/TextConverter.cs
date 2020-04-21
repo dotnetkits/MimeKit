@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,16 +28,6 @@ using System;
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
-
-#if PORTABLE
-using Encoding = Portable.Text.Encoding;
-using Encoder = Portable.Text.Encoder;
-using Decoder = Portable.Text.Decoder;
-#else
-using Encoding = System.Text.Encoding;
-using Encoder = System.Text.Encoder;
-using Decoder = System.Text.Decoder;
-#endif
 
 namespace MimeKit.Text {
 	/// <summary>

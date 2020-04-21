@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,10 +31,6 @@ using System.Threading;
 using System.Collections;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-
-#if PORTABLE
-using Encoding = Portable.Text.Encoding;
-#endif
 
 using MimeKit.IO;
 using MimeKit.Utils;
@@ -1368,7 +1364,6 @@ namespace MimeKit {
 			return LoadAsync (ParserOptions.Default, stream, cancellationToken);
 		}
 
-#if !PORTABLE
 		/// <summary>
 		/// Load a <see cref="HeaderList"/> from the specified file.
 		/// </summary>
@@ -1552,6 +1547,5 @@ namespace MimeKit {
 		{
 			return LoadAsync (ParserOptions.Default, fileName, cancellationToken);
 		}
-#endif // !PORTABLE
 	}
 }

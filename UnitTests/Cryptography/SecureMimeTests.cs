@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,9 @@ using System.Security.Cryptography.X509Certificates;
 
 using NUnit.Framework;
 
+using Org.BouncyCastle.Cms;
 using Org.BouncyCastle.X509;
+using Org.BouncyCastle.Pkcs;
 
 using MimeKit;
 using MimeKit.Cryptography;
@@ -48,20 +50,25 @@ namespace UnitTests.Cryptography {
 		const string ExpiredCertificateMessage = "The certificate is revoked.\r\n";
 		const string UntrustedRootCertificateMessage = "A certificate chain processed, but terminated in a root certificate which is not trusted by the trust provider.\r\n";
 		const string ThunderbirdFingerprint = "354ea4dcf98166639b58ec5df06a65de0cd8a95c";
-		const string MimeKitFingerprint = "66679bc836cf4f22cb3680bc9bbae50898cd30e0";
+		const string MimeKitFingerprint = "ba4403cd3d876ae8cd261575820330086cc3cbc8";
 		const string ThunderbirdName = "fejj@gnome.org";
 
-		static readonly DateTime MimeKitCreationDate = new DateTime (2019, 08, 21, 11, 46, 34);
-		static readonly DateTime MimeKitExpirationDate = new DateTime (2029, 08, 18, 11, 46, 34);
+		static readonly DateTime MimeKitCreationDate = new DateTime (2019, 11, 05, 03, 00, 15);
+		static readonly DateTime MimeKitExpirationDate = new DateTime (2029, 11, 02, 03, 00, 15);
+		readonly X509Certificate MimeKitCertificate;
 
-		static readonly string[] CertificateAuthorities = {
-			"certificate-authority.crt", "intermediate.crt", "StartComCertificationAuthority.crt", "StartComClass1PrimaryIntermediateClientCA.crt"
+		static readonly string[] StartComCertificates = {
+			"StartComCertificationAuthority.crt", "StartComClass1PrimaryIntermediateClientCA.crt"
 		};
 
+		protected virtual bool IsEnabled { get { return true; } }
 		protected abstract SecureMimeContext CreateContext ();
 
 		protected SecureMimeTestsBase ()
 		{
+			if (!IsEnabled)
+				return;
+
 			using (var ctx = CreateContext ()) {
 				var dataDir = Path.Combine ("..", "..", "TestData", "smime");
 				string path;
@@ -71,19 +78,12 @@ namespace UnitTests.Cryptography {
 				else
 					CryptographyContext.Register (ctx.GetType ());
 
+				var chain = LoadPkcs12CertificateChain (Path.Combine (dataDir, "smime.pfx"), "no.secret");
+				MimeKitCertificate = chain[0];
+
 				if (ctx is WindowsSecureMimeContext) {
 					var windows = (WindowsSecureMimeContext) ctx;
 					var parser = new X509CertificateParser ();
-
-					using (var stream = File.OpenRead (Path.Combine (dataDir, "certificate-authority.crt"))) {
-						foreach (X509Certificate certificate in parser.ReadCertificates (stream))
-							windows.Import (StoreName.AuthRoot, certificate);
-					}
-
-					using (var stream = File.OpenRead (Path.Combine (dataDir, "intermediate.crt"))) {
-						foreach (X509Certificate certificate in parser.ReadCertificates (stream))
-							windows.Import (StoreName.CertificateAuthority, certificate);
-					}
 
 					using (var stream = File.OpenRead (Path.Combine (dataDir, "StartComCertificationAuthority.crt"))) {
 						foreach (X509Certificate certificate in parser.ReadCertificates (stream))
@@ -94,8 +94,15 @@ namespace UnitTests.Cryptography {
 						foreach (X509Certificate certificate in parser.ReadCertificates (stream))
 							windows.Import (StoreName.CertificateAuthority, certificate);
 					}
+
+					// import the root & intermediate certificates from the smime.pfx file
+					var store = StoreName.AuthRoot;
+					for (int i = chain.Length - 1; i > 0; i--) {
+						windows.Import (store, chain[i]);
+						store = StoreName.CertificateAuthority;
+					}
 				} else {
-					foreach (var filename in CertificateAuthorities) {
+					foreach (var filename in StartComCertificates) {
 						path = Path.Combine (dataDir, filename);
 						using (var stream = File.OpenRead (path)) {
 							if (ctx is DefaultSecureMimeContext) {
@@ -107,14 +114,56 @@ namespace UnitTests.Cryptography {
 							}
 						}
 					}
+
+					// import the root & intermediate certificates from the smime.pfx file
+					for (int i = chain.Length - 1; i > 0; i--) {
+						if (ctx is DefaultSecureMimeContext) {
+							((DefaultSecureMimeContext) ctx).Import (chain[i], true);
+						} else {
+							ctx.Import (chain[i]);
+						}
+					}
 				}
 
-				path = Path.Combine (dataDir, "smime.p12");
-
+				path = Path.Combine (dataDir, "smime.pfx");
 				ctx.Import (path, "no.secret");
 
 				// import a second time to cover the case where the certificate & private key already exist
 				Assert.DoesNotThrow (() => ctx.Import (path, "no.secret"));
+			}
+		}
+
+		public static X509Certificate LoadCertificate (string path)
+		{
+			using (var stream = File.OpenRead (path)) {
+				var parser = new X509CertificateParser ();
+
+				return parser.ReadCertificate (stream);
+			}
+		}
+
+		public static X509Certificate[] LoadPkcs12CertificateChain (string fileName, string password)
+		{
+			using (var stream = File.OpenRead (fileName)) {
+				var pkcs12 = new Pkcs12Store (stream, password.ToCharArray ());
+
+				foreach (string alias in pkcs12.Aliases) {
+					if (pkcs12.IsKeyEntry (alias)) {
+						var chain = pkcs12.GetCertificateChain (alias);
+						var entry = pkcs12.GetKey (alias);
+
+						if (!entry.Key.IsPrivate)
+							continue;
+
+						var certificates = new X509Certificate[chain.Length];
+						for (int i = 0; i < chain.Length; i++)
+							certificates[i] = chain[i].Certificate;
+
+						return certificates;
+					}
+				}
+
+				return new X509Certificate[0];
 			}
 		}
 
@@ -137,7 +186,7 @@ namespace UnitTests.Cryptography {
 			Assert.Throws<NotSupportedException> (() => SecureMimeContext.GetDigestOid (DigestAlgorithm.Tiger192));
 
 			using (var ctx = CreateContext ()) {
-				var signer = new CmsSigner (Path.Combine ("..", "..", "TestData", "smime", "smime.p12"), "no.secret");
+				var signer = new CmsSigner (Path.Combine ("..", "..", "TestData", "smime", "smime.pfx"), "no.secret");
 				var mailbox = new MailboxAddress ("Unit Tests", "example@mimekit.net");
 				var recipients = new CmsRecipientCollection ();
 				DigitalSignatureCollection signatures;
@@ -437,7 +486,7 @@ namespace UnitTests.Cryptography {
 		[Test]
 		public virtual void TestSecureMimeEncapsulatedSigningWithCmsSigner ()
 		{
-			var signer = new CmsSigner (Path.Combine ("..", "..", "TestData", "smime", "smime.p12"), "no.secret");
+			var signer = new CmsSigner (Path.Combine ("..", "..", "TestData", "smime", "smime.pfx"), "no.secret", SubjectIdentifierType.SubjectKeyIdentifier);
 			var cleartext = new TextPart ("plain") { Text = "This is some text that we'll end up signing..." };
 
 			var signed = ApplicationPkcs7Mime.Sign (signer, cleartext);
@@ -479,7 +528,7 @@ namespace UnitTests.Cryptography {
 		[Test]
 		public virtual void TestSecureMimeEncapsulatedSigningWithContextAndCmsSigner ()
 		{
-			var signer = new CmsSigner (Path.Combine ("..", "..", "TestData", "smime", "smime.p12"), "no.secret");
+			var signer = new CmsSigner (Path.Combine ("..", "..", "TestData", "smime", "smime.pfx"), "no.secret", SubjectIdentifierType.SubjectKeyIdentifier);
 			var cleartext = new TextPart ("plain") { Text = "This is some text that we'll end up signing..." };
 
 			using (var ctx = CreateContext ()) {
@@ -512,7 +561,7 @@ namespace UnitTests.Cryptography {
 		[Test]
 		public virtual void TestSecureMimeSigningWithCmsSigner ()
 		{
-			var signer = new CmsSigner (Path.Combine ("..", "..", "TestData", "smime", "smime.p12"), "no.secret");
+			var signer = new CmsSigner (Path.Combine ("..", "..", "TestData", "smime", "smime.pfx"), "no.secret");
 			var body = new TextPart ("plain") { Text = "This is some cleartext that we'll end up signing..." };
 
 			var multipart = MultipartSigned.Create (signer, body);
@@ -561,7 +610,7 @@ namespace UnitTests.Cryptography {
 		[Test]
 		public virtual void TestSecureMimeSigningWithContextAndCmsSigner ()
 		{
-			var signer = new CmsSigner (Path.Combine ("..", "..", "TestData", "smime", "smime.p12"), "no.secret");
+			var signer = new CmsSigner (Path.Combine ("..", "..", "TestData", "smime", "smime.pfx"), "no.secret");
 			var body = new TextPart ("plain") { Text = "This is some cleartext that we'll end up signing..." };
 
 			using (var ctx = CreateContext ()) {
@@ -627,27 +676,35 @@ namespace UnitTests.Cryptography {
 		[Test]
 		public virtual void TestSecureMimeSigningWithRsaSsaPss ()
 		{
-			var signer = new CmsSigner (Path.Combine ("..", "..", "TestData", "smime", "smime.p12"), "no.secret") {
-				RsaSignaturePaddingScheme = RsaSignaturePaddingScheme.Pss
+			var signer = new CmsSigner (Path.Combine ("..", "..", "TestData", "smime", "smime.pfx"), "no.secret") {
+				RsaSignaturePadding = RsaSignaturePadding.Pss
 			};
 			var body = new TextPart ("plain") { Text = "This is some cleartext that we'll end up signing..." };
 
-			var multipart = MultipartSigned.Create (signer, body);
-
-			Assert.AreEqual (2, multipart.Count, "The multipart/signed has an unexpected number of children.");
-
-			var protocol = multipart.ContentType.Parameters["protocol"];
-			Assert.AreEqual ("application/pkcs7-signature", protocol, "The multipart/signed protocol does not match.");
-
-			Assert.IsInstanceOf<TextPart> (multipart[0], "The first child is not a text part.");
-			Assert.IsInstanceOf<ApplicationPkcs7Signature> (multipart[1], "The second child is not a detached signature.");
-
-			var signatures = multipart.Verify ();
-			Assert.AreEqual (1, signatures.Count, "Verify returned an unexpected number of signatures.");
-
-			var signature = signatures[0];
-
 			using (var ctx = CreateContext ()) {
+				MultipartSigned multipart;
+
+				try {
+					multipart = MultipartSigned.Create (signer, body);
+				} catch (NotSupportedException) {
+					if (!(ctx is WindowsSecureMimeContext))
+						Assert.Fail ("RSASSA-PSS should be supported.");
+					return;
+				}
+
+				Assert.AreEqual (2, multipart.Count, "The multipart/signed has an unexpected number of children.");
+
+				var protocol = multipart.ContentType.Parameters["protocol"];
+				Assert.AreEqual ("application/pkcs7-signature", protocol, "The multipart/signed protocol does not match.");
+
+				Assert.IsInstanceOf<TextPart> (multipart[0], "The first child is not a text part.");
+				Assert.IsInstanceOf<ApplicationPkcs7Signature> (multipart[1], "The second child is not a detached signature.");
+
+				var signatures = multipart.Verify ();
+				Assert.AreEqual (1, signatures.Count, "Verify returned an unexpected number of signatures.");
+
+				var signature = signatures[0];
+
 				if (!(ctx is WindowsSecureMimeContext) || Path.DirectorySeparatorChar == '\\')
 					Assert.AreEqual ("MimeKit UnitTests", signature.SignerCertificate.Name);
 				Assert.AreEqual ("mimekit@example.com", signature.SignerCertificate.Email);
@@ -917,11 +974,10 @@ namespace UnitTests.Cryptography {
 		[Test]
 		public virtual void TestSecureMimeEncryption ()
 		{
-			var certificate = new X509Certificate2 (Path.Combine ("..", "..", "TestData", "smime", "smime.p12"), "no.secret");
 			var body = new TextPart ("plain") { Text = "This is some cleartext that we'll end up encrypting..." };
 			var recipients = new CmsRecipientCollection ();
 
-			recipients.Add (new CmsRecipient (certificate, SubjectIdentifierType.SubjectKeyIdentifier));
+			recipients.Add (new CmsRecipient (MimeKitCertificate, SubjectIdentifierType.SubjectKeyIdentifier));
 
 			var encrypted = ApplicationPkcs7Mime.Encrypt (recipients, body);
 
@@ -936,13 +992,16 @@ namespace UnitTests.Cryptography {
 		[Test]
 		public virtual void TestSecureMimeEncryptionWithContext ()
 		{
-			var certificate = new X509Certificate2 (Path.Combine ("..", "..", "TestData", "smime", "smime.p12"), "no.secret");
 			var body = new TextPart ("plain") { Text = "This is some cleartext that we'll end up encrypting..." };
-			var recipients = new CmsRecipientCollection ();
-
-			recipients.Add (new CmsRecipient (certificate, SubjectIdentifierType.SubjectKeyIdentifier));
 
 			using (var ctx = CreateContext ()) {
+				var recipients = new CmsRecipientCollection ();
+
+				if (ctx is WindowsSecureMimeContext)
+					recipients.Add (new CmsRecipient (MimeKitCertificate.AsX509Certificate2 (), SubjectIdentifierType.SubjectKeyIdentifier));
+				else
+					recipients.Add (new CmsRecipient (MimeKitCertificate, SubjectIdentifierType.SubjectKeyIdentifier));
+
 				var encrypted = ApplicationPkcs7Mime.Encrypt (ctx, recipients, body);
 
 				Assert.AreEqual (SecureMimeType.EnvelopedData, encrypted.SecureMimeType, "S/MIME type did not match.");
@@ -962,13 +1021,16 @@ namespace UnitTests.Cryptography {
 		[Test]
 		public virtual void TestSecureMimeEncryptionWithAlgorithm ()
 		{
-			var certificate = new X509Certificate2 (Path.Combine ("..", "..", "TestData", "smime", "smime.p12"), "no.secret");
 			var body = new TextPart ("plain") { Text = "This is some cleartext that we'll end up encrypting..." };
-			var recipients = new CmsRecipientCollection ();
-
-			recipients.Add (new CmsRecipient (certificate, SubjectIdentifierType.SubjectKeyIdentifier));
 
 			using (var ctx = CreateContext ()) {
+				var recipients = new CmsRecipientCollection ();
+
+				if (ctx is WindowsSecureMimeContext)
+					recipients.Add (new CmsRecipient (MimeKitCertificate.AsX509Certificate2 (), SubjectIdentifierType.SubjectKeyIdentifier));
+				else
+					recipients.Add (new CmsRecipient (MimeKitCertificate, SubjectIdentifierType.SubjectKeyIdentifier));
+
 				foreach (EncryptionAlgorithm algorithm in Enum.GetValues (typeof (EncryptionAlgorithm))) {
 					foreach (var recipient in recipients)
 						recipient.EncryptionAlgorithms = new EncryptionAlgorithm[] { algorithm };
@@ -1036,6 +1098,46 @@ namespace UnitTests.Cryptography {
 						Assert.IsInstanceOf<TextPart> (decrypted, "Decrypted part is not the expected type.");
 						Assert.AreEqual (body.Text, ((TextPart) decrypted).Text, "Decrypted content is not the same as the original.");
 					}
+				}
+			}
+		}
+
+		[TestCase (DigestAlgorithm.Sha1)]
+		[TestCase (DigestAlgorithm.Sha256)]
+		[TestCase (DigestAlgorithm.Sha384)]
+		[TestCase (DigestAlgorithm.Sha512)]
+		public virtual void TestSecureMimeEncryptionWithRsaesOaep (DigestAlgorithm hashAlgorithm)
+		{
+			var body = new TextPart ("plain") { Text = "This is some cleartext that we'll end up encrypting..." };
+
+			using (var ctx = CreateContext ()) {
+				var recipients = new CmsRecipientCollection ();
+
+				var recipient = new CmsRecipient (MimeKitCertificate, SubjectIdentifierType.IssuerAndSerialNumber);
+				recipient.EncryptionAlgorithms = new EncryptionAlgorithm[] { EncryptionAlgorithm.Aes128 };
+				recipient.RsaEncryptionPadding = RsaEncryptionPadding.CreateOaep (hashAlgorithm);
+				recipients.Add (recipient);
+
+				ApplicationPkcs7Mime encrypted;
+
+				try {
+					encrypted = ApplicationPkcs7Mime.Encrypt (ctx, recipients, body);
+				} catch (NotSupportedException) {
+					if (!(ctx is WindowsSecureMimeContext))
+						Assert.Fail ("RSAES-OAEP should be supported.");
+					return;
+				}
+
+				Assert.AreEqual (SecureMimeType.EnvelopedData, encrypted.SecureMimeType, "S/MIME type did not match.");
+
+				using (var stream = new MemoryStream ()) {
+					ctx.DecryptTo (encrypted.Content.Open (), stream);
+					stream.Position = 0;
+
+					var decrypted = MimeEntity.Load (stream);
+
+					Assert.IsInstanceOf<TextPart> (decrypted, "Decrypted part is not the expected type.");
+					Assert.AreEqual (body.Text, ((TextPart) decrypted).Text, "Decrypted content is not the same as the original.");
 				}
 			}
 		}
@@ -1338,6 +1440,12 @@ namespace UnitTests.Cryptography {
 	[TestFixture]
 	public class WindowsSecureMimeTests : SecureMimeTestsBase
 	{
+		protected override bool IsEnabled {
+			get {
+				return Path.DirectorySeparatorChar == '\\';
+			}
+		}
+
 		protected override SecureMimeContext CreateContext ()
 		{
 			return new WindowsSecureMimeContext ();
@@ -1471,7 +1579,7 @@ namespace UnitTests.Cryptography {
 			if (Path.DirectorySeparatorChar != '\\')
 				return;
 
-			base.TestSecureMimeEncryption ();
+			base.TestSecureMimeEncryptionWithContext ();
 		}
 
 		[Test]
@@ -1481,6 +1589,18 @@ namespace UnitTests.Cryptography {
 				return;
 
 			base.TestSecureMimeEncryptionWithAlgorithm ();
+		}
+
+		[TestCase (DigestAlgorithm.Sha1)]
+		[TestCase (DigestAlgorithm.Sha256)]
+		[TestCase (DigestAlgorithm.Sha384)]
+		[TestCase (DigestAlgorithm.Sha512)]
+		public override void TestSecureMimeEncryptionWithRsaesOaep (DigestAlgorithm hashAlgorithm)
+		{
+			if (Path.DirectorySeparatorChar != '\\')
+				return;
+
+			base.TestSecureMimeEncryptionWithRsaesOaep (hashAlgorithm);
 		}
 
 		[Test]

@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,10 +31,6 @@ using System.Threading;
 using System.Collections;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-
-#if PORTABLE
-using Encoding = Portable.Text.Encoding;
-#endif
 
 using MimeKit.Encodings;
 using MimeKit.Utils;
@@ -476,7 +472,7 @@ namespace MimeKit {
 					cancellable.Write (options.NewLineBytes, 0, options.NewLineBytes.Length, cancellationToken);
 			} else {
 				for (int i = 0; i < children.Count; i++) {
-					var msg = children[i] as MessagePart;
+					var rfc822 = children[i] as MessagePart;
 					var multi = children[i] as Multipart;
 					var part = children[i] as MimePart;
 
@@ -485,9 +481,9 @@ namespace MimeKit {
 					stream.Write (options.NewLineBytes, 0, options.NewLineBytes.Length);
 					children[i].WriteTo (options, stream, false, cancellationToken);
 
-					if (msg != null && msg.Message != null && msg.Message.Body != null) {
-						multi = msg.Message.Body as Multipart;
-						part = msg.Message.Body as MimePart;
+					if (rfc822 != null && rfc822.Message != null && rfc822.Message.Body != null) {
+						multi = rfc822.Message.Body as Multipart;
+						part = rfc822.Message.Body as MimePart;
 					}
 
 					if ((part != null && part.Content == null) ||

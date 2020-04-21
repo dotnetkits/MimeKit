@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -106,7 +106,6 @@ namespace MimeKit.Cryptography {
 			PrivateKey = key;
 		}
 
-#if !PORTABLE
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.DkimSigner"/> class.
 		/// </summary>
@@ -162,7 +161,6 @@ namespace MimeKit.Cryptography {
 			using (var stream = File.OpenRead (fileName))
 				PrivateKey = LoadPrivateKey (stream);
 		}
-#endif
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.DkimSigner"/> class.

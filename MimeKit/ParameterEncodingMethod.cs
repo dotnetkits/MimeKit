@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2019 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,9 @@ namespace MimeKit {
 	/// some older email clients to improperly encode using the method described in
 	/// <a href="https://tools.ietf.org/html/rfc2047">rfc2047</a> instead.
 	/// </remarks>
+	/// <example>
+	/// <code language="c#" source="Examples\ParameterExamples.cs" region="OverrideAllParameterEncodings"/>
+	/// </example>
 	public enum ParameterEncodingMethod {
 		/// <summary>
 		/// Use the default encoding method set on the <see cref="FormatOptions"/>.
