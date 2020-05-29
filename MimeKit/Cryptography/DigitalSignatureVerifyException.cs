@@ -32,7 +32,7 @@ using System.Runtime.Serialization;
 
 namespace MimeKit.Cryptography {
 	/// <summary>
-	/// An exception that is thrown when an error occurrs in <see cref="IDigitalSignature.Verify"/>.
+	/// An exception that is thrown when an error occurrs in <see cref="IDigitalSignature.Verify()"/>.
 	/// </summary>
 	/// <remarks>
 	/// For more information about the error condition, check the <see cref="System.Exception.InnerException"/> property.
@@ -44,7 +44,7 @@ namespace MimeKit.Cryptography {
 	{
 #if SERIALIZABLE
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.DigitalSignatureVerifyException"/> class.
+		/// Initialize a new instance of the <see cref="DigitalSignatureVerifyException"/> class.
 		/// </summary>
 		/// <remarks>
 		/// Creates a new <see cref="DigitalSignatureVerifyException"/>.
@@ -61,7 +61,7 @@ namespace MimeKit.Cryptography {
 #endif
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="T:MimeKit.Cryptography.DigitalSignatureVerifyException"/> class.
+		/// Initialize a new instance of the <see cref="DigitalSignatureVerifyException"/> class.
 		/// </summary>
 		/// <remarks>
 		/// Creates a new <see cref="DigitalSignatureVerifyException"/>.
@@ -75,7 +75,7 @@ namespace MimeKit.Cryptography {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="T:MimeKit.Cryptography.DigitalSignatureVerifyException"/> class.
+		/// Initialize a new instance of the <see cref="DigitalSignatureVerifyException"/> class.
 		/// </summary>
 		/// <remarks>
 		/// Creates a new <see cref="DigitalSignatureVerifyException"/>.
@@ -88,7 +88,7 @@ namespace MimeKit.Cryptography {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="T:MimeKit.Cryptography.DigitalSignatureVerifyException"/> class.
+		/// Initialize a new instance of the <see cref="DigitalSignatureVerifyException"/> class.
 		/// </summary>
 		/// <remarks>
 		/// Creates a new <see cref="DigitalSignatureVerifyException"/>.
@@ -100,7 +100,7 @@ namespace MimeKit.Cryptography {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="T:MimeKit.Cryptography.DigitalSignatureVerifyException"/> class.
+		/// Initialize a new instance of the <see cref="DigitalSignatureVerifyException"/> class.
 		/// </summary>
 		/// <remarks>
 		/// Creates a new <see cref="DigitalSignatureVerifyException"/>.

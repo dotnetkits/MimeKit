@@ -1,19 +1,20 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27130.2010
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30114.105
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MimeKit.Net45", "MimeKit\MimeKit.Net45.csproj", "{D5F54A4F-D84B-430F-9271-F7861E285B3E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTests", "UnitTests\UnitTests.csproj", "{0225FDB7-CF63-4402-BB30-9B149AC06C2E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MimeKit.Android", "MimeKit\MimeKit.Android.csproj", "{004B4019-62B7-4A15-AF2C-C20968845C46}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MimeKit.iOS", "MimeKit\MimeKit.iOS.csproj", "{4C1288AD-12C8-4BF7-AED7-6C4DC539C856}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mono.Data.Sqlite", "Mono.Data.Sqlite\Mono.Data.Sqlite.csproj", "{F26434C1-BA3D-41FB-B560-C009CB72B1B6}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MimeKit.NetStandard", "MimeKit\MimeKit.NetStandard.csproj", "{E8667DCE-A5BB-4D30-9815-FC8959E447F5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{4B4EB921-F77E-4A51-897F-BBA7FA3E3468}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,14 +30,6 @@ Global
 		{0225FDB7-CF63-4402-BB30-9B149AC06C2E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0225FDB7-CF63-4402-BB30-9B149AC06C2E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0225FDB7-CF63-4402-BB30-9B149AC06C2E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{004B4019-62B7-4A15-AF2C-C20968845C46}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{004B4019-62B7-4A15-AF2C-C20968845C46}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{004B4019-62B7-4A15-AF2C-C20968845C46}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{004B4019-62B7-4A15-AF2C-C20968845C46}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4C1288AD-12C8-4BF7-AED7-6C4DC539C856}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4C1288AD-12C8-4BF7-AED7-6C4DC539C856}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4C1288AD-12C8-4BF7-AED7-6C4DC539C856}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4C1288AD-12C8-4BF7-AED7-6C4DC539C856}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F26434C1-BA3D-41FB-B560-C009CB72B1B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F26434C1-BA3D-41FB-B560-C009CB72B1B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F26434C1-BA3D-41FB-B560-C009CB72B1B6}.Release|Any CPU.ActiveCfg = Release|Any CPU

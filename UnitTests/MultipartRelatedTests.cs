@@ -77,7 +77,8 @@ namespace UnitTests {
 			Assert.AreEqual (3, related.Count, "Count");
 			Assert.AreEqual (root, related.Root, "Root");
 			Assert.AreEqual (root, related[2], "Root should be the 3rd item.");
-			Assert.IsNotNullOrEmpty (root.ContentId, "Root's Content-Id should not be null.");
+			Assert.IsNotNull (root.ContentId, "Root's Content-Id should not be null.");
+			Assert.IsNotEmpty (root.ContentId, "Root's Content-Id should not be empty.");
 
 			start = "<" + root.ContentId + ">";
 
@@ -99,7 +100,7 @@ namespace UnitTests {
 		[Test]
 		public void TestDocumentRootByType ()
 		{
-			var related = (MultipartRelated) MimeEntity.Load (Path.Combine ("..", "..", "TestData", "messages", "multipart-related-mhtml.txt"));
+			var related = (MultipartRelated) MimeEntity.Load (Path.Combine (TestHelper.ProjectDir, "TestData", "messages", "multipart-related-mhtml.txt"));
 
 			Assert.AreEqual (2, related.Count, "Count");
 

@@ -48,7 +48,7 @@ namespace UnitTests.Cryptography {
 		static PgpMimeTests ()
 		{
 			Environment.SetEnvironmentVariable ("GNUPGHOME", Path.GetFullPath ("."));
-			var dataDir = Path.Combine ("..", "..", "TestData", "openpgp");
+			var dataDir = Path.Combine (TestHelper.ProjectDir, "TestData", "openpgp");
 
 			CryptographyContext.Register (typeof (DummyOpenPgpContext));
 
@@ -780,7 +780,7 @@ namespace UnitTests.Cryptography {
 		[Test]
 		public void TestAutoKeyRetrieve ()
 		{
-			var message = MimeMessage.Load (Path.Combine ("..", "..", "TestData", "openpgp", "[Announce] GnuPG 2.1.20 released.eml"));
+			var message = MimeMessage.Load (Path.Combine (TestHelper.ProjectDir, "TestData", "openpgp", "[Announce] GnuPG 2.1.20 released.eml"));
 			var multipart = (MultipartSigned) ((Multipart) message.Body)[0];
 
 			Assert.AreEqual (2, multipart.Count, "The multipart/signed has an unexpected number of children.");
@@ -1014,8 +1014,8 @@ namespace UnitTests.Cryptography {
 				Assert.Throws<ArgumentNullException> (() => ctx.DecryptTo (stream, null), "DecryptTo");
 
 				// DecryptToAsync
-				Assert.Throws<ArgumentNullException> (async () => await ctx.DecryptToAsync (null, stream), "DecryptToAsync");
-				Assert.Throws<ArgumentNullException> (async () => await ctx.DecryptToAsync (stream, null), "DecryptToAsync");
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await ctx.DecryptToAsync (null, stream), "DecryptToAsync");
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await ctx.DecryptToAsync (stream, null), "DecryptToAsync");
 
 				// GetDigestAlgorithmName
 				Assert.Throws<ArgumentOutOfRangeException> (() => ctx.GetDigestAlgorithmName (DigestAlgorithm.None), "GetDigestAlgorithmName");
@@ -1063,9 +1063,9 @@ namespace UnitTests.Cryptography {
 				Assert.Throws<ArgumentNullException> (() => ctx.Verify (null, stream), "Verify");
 				Assert.Throws<ArgumentNullException> (() => ctx.Verify (stream, null), "Verify");
 
-				// Verify
-				Assert.Throws<ArgumentNullException> (async () => await ctx.VerifyAsync (null, stream), "VerifyAsync");
-				Assert.Throws<ArgumentNullException> (async () => await ctx.VerifyAsync (stream, null), "VerifyAsync");
+				// VerifyAsync
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await ctx.VerifyAsync (null, stream), "VerifyAsync");
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await ctx.VerifyAsync (stream, null), "VerifyAsync");
 
 				// MultipartEncrypted
 
@@ -1175,7 +1175,7 @@ namespace UnitTests.Cryptography {
 				Assert.Throws<ArgumentNullException> (() => signed.Accept (null));
 
 				Assert.Throws<ArgumentNullException> (() => signed.Verify (null));
-				Assert.Throws<ArgumentNullException> (async () => await signed.VerifyAsync (null));
+				Assert.ThrowsAsync<ArgumentNullException> (async () => await signed.VerifyAsync (null));
 			}
 		}
 
@@ -1204,14 +1204,14 @@ namespace UnitTests.Cryptography {
 		{
 			var filter = new OpenPgpDetectionFilter ();
 
-			PumpDataThroughFilter (filter, Path.Combine ("..", "..", "TestData", "openpgp", "mimekit.gpg.pub"), true);
+			PumpDataThroughFilter (filter, Path.Combine (TestHelper.ProjectDir, "TestData", "openpgp", "mimekit.gpg.pub"), true);
 			Assert.AreEqual (OpenPgpDataType.PublicKey, filter.DataType);
 			Assert.AreEqual (0, filter.BeginOffset);
 			Assert.AreEqual (1754, filter.EndOffset);
 
 			filter.Reset ();
 
-			PumpDataThroughFilter (filter, Path.Combine ("..", "..", "TestData", "openpgp", "mimekit.gpg.sec"), true);
+			PumpDataThroughFilter (filter, Path.Combine (TestHelper.ProjectDir, "TestData", "openpgp", "mimekit.gpg.sec"), true);
 			Assert.AreEqual (OpenPgpDataType.PrivateKey, filter.DataType);
 			Assert.AreEqual (0, filter.BeginOffset);
 			Assert.AreEqual (3650, filter.EndOffset);

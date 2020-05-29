@@ -46,14 +46,14 @@ namespace UnitTests.Cryptography {
 		public void TestArcSignerCtors ()
 		{
 			Assert.DoesNotThrow (() => {
-				var signer = new DummyArcSigner (Path.Combine ("..", "..", "TestData", "dkim", "example.pem"), "example.com", "1433868189.example") {
+				var signer = new DummyArcSigner (Path.Combine (TestHelper.ProjectDir, "TestData", "dkim", "example.pem"), "example.com", "1433868189.example") {
 					SignatureAlgorithm = DkimSignatureAlgorithm.RsaSha256
 				};
 			});
 
 			AsymmetricCipherKeyPair keys;
 
-			using (var stream = new StreamReader (Path.Combine ("..", "..", "TestData", "dkim", "example.pem"))) {
+			using (var stream = new StreamReader (Path.Combine (TestHelper.ProjectDir, "TestData", "dkim", "example.pem"))) {
 				var reader = new PemReader (stream);
 
 				keys = reader.ReadObject () as AsymmetricCipherKeyPair;
@@ -69,7 +69,7 @@ namespace UnitTests.Cryptography {
 		[Test]
 		public void TestArcSignerDefaults ()
 		{
-			var path = Path.Combine ("..", "..", "TestData", "dkim", "example.pem");
+			var path = Path.Combine (TestHelper.ProjectDir, "TestData", "dkim", "example.pem");
 			AsymmetricCipherKeyPair keys;
 			ArcSigner signer;
 
@@ -94,7 +94,7 @@ namespace UnitTests.Cryptography {
 		[Test]
 		public void TestArgumentExceptions ()
 		{
-			var path = Path.Combine ("..", "..", "TestData", "dkim", "example.pem");
+			var path = Path.Combine (TestHelper.ProjectDir, "TestData", "dkim", "example.pem");
 			var locator = new DkimPublicKeyLocator ();
 			var verifier = new DkimVerifier (locator);
 			var dkimHeader = new Header (HeaderId.DkimSignature, "value");
@@ -154,27 +154,27 @@ namespace UnitTests.Cryptography {
 
 			// SignAsync
 
-			Assert.Throws<ArgumentNullException> (async () => await signer.SignAsync (null, new HeaderId[] { HeaderId.From }));
-			Assert.Throws<ArgumentNullException> (async () => await signer.SignAsync (message, (IList<HeaderId>) null));
-			Assert.Throws<ArgumentException> (async () => await signer.SignAsync (message, new HeaderId[] { HeaderId.Unknown, HeaderId.From }));
-			Assert.Throws<ArgumentException> (async () => await signer.SignAsync (message, new HeaderId[] { HeaderId.Received, HeaderId.From }));
-			Assert.Throws<ArgumentException> (async () => await signer.SignAsync (message, new HeaderId[] { HeaderId.ContentType }));
-			Assert.Throws<ArgumentNullException> (async () => await signer.SignAsync (null, new string[] { "From" }));
-			Assert.Throws<ArgumentNullException> (async () => await signer.SignAsync (message, (IList<string>) null));
-			Assert.Throws<ArgumentException> (async () => await signer.SignAsync (message, new string[] { "", "From" }));
-			Assert.Throws<ArgumentException> (async () => await signer.SignAsync (message, new string[] { null, "From" }));
-			Assert.Throws<ArgumentException> (async () => await signer.SignAsync (message, new string[] { "Received", "From" }));
-			Assert.Throws<ArgumentException> (async () => await signer.SignAsync (message, new string[] { "Content-Type" }));
+			Assert.ThrowsAsync<ArgumentNullException> (async () => await signer.SignAsync (null, new HeaderId[] { HeaderId.From }));
+			Assert.ThrowsAsync<ArgumentNullException> (async () => await signer.SignAsync (message, (IList<HeaderId>) null));
+			Assert.ThrowsAsync<ArgumentException> (async () => await signer.SignAsync (message, new HeaderId[] { HeaderId.Unknown, HeaderId.From }));
+			Assert.ThrowsAsync<ArgumentException> (async () => await signer.SignAsync (message, new HeaderId[] { HeaderId.Received, HeaderId.From }));
+			Assert.ThrowsAsync<ArgumentException> (async () => await signer.SignAsync (message, new HeaderId[] { HeaderId.ContentType }));
+			Assert.ThrowsAsync<ArgumentNullException> (async () => await signer.SignAsync (null, new string[] { "From" }));
+			Assert.ThrowsAsync<ArgumentNullException> (async () => await signer.SignAsync (message, (IList<string>) null));
+			Assert.ThrowsAsync<ArgumentException> (async () => await signer.SignAsync (message, new string[] { "", "From" }));
+			Assert.ThrowsAsync<ArgumentException> (async () => await signer.SignAsync (message, new string[] { null, "From" }));
+			Assert.ThrowsAsync<ArgumentException> (async () => await signer.SignAsync (message, new string[] { "Received", "From" }));
+			Assert.ThrowsAsync<ArgumentException> (async () => await signer.SignAsync (message, new string[] { "Content-Type" }));
 
-			Assert.Throws<ArgumentNullException> (async () => await signer.SignAsync (null, message, new HeaderId[] { HeaderId.From }));
-			Assert.Throws<ArgumentNullException> (async () => await signer.SignAsync (options, null, new HeaderId[] { HeaderId.From }));
-			Assert.Throws<ArgumentException> (async () => await signer.SignAsync (options, message, new HeaderId[] { HeaderId.From, HeaderId.Unknown }));
-			Assert.Throws<ArgumentNullException> (async () => await signer.SignAsync (options, message, (IList<HeaderId>) null));
+			Assert.ThrowsAsync<ArgumentNullException> (async () => await signer.SignAsync (null, message, new HeaderId[] { HeaderId.From }));
+			Assert.ThrowsAsync<ArgumentNullException> (async () => await signer.SignAsync (options, null, new HeaderId[] { HeaderId.From }));
+			Assert.ThrowsAsync<ArgumentException> (async () => await signer.SignAsync (options, message, new HeaderId[] { HeaderId.From, HeaderId.Unknown }));
+			Assert.ThrowsAsync<ArgumentNullException> (async () => await signer.SignAsync (options, message, (IList<HeaderId>) null));
 
-			Assert.Throws<ArgumentNullException> (async () => await signer.SignAsync (null, message, new string[] { "From" }));
-			Assert.Throws<ArgumentNullException> (async () => await signer.SignAsync (options, null, new string[] { "From" }));
-			Assert.Throws<ArgumentException> (async () => await signer.SignAsync (options, message, new string[] { "From", null }));
-			Assert.Throws<ArgumentNullException> (async () => await signer.SignAsync (options, message, (IList<string>) null));
+			Assert.ThrowsAsync<ArgumentNullException> (async () => await signer.SignAsync (null, message, new string[] { "From" }));
+			Assert.ThrowsAsync<ArgumentNullException> (async () => await signer.SignAsync (options, null, new string[] { "From" }));
+			Assert.ThrowsAsync<ArgumentException> (async () => await signer.SignAsync (options, message, new string[] { "From", null }));
+			Assert.ThrowsAsync<ArgumentNullException> (async () => await signer.SignAsync (options, message, (IList<string>) null));
 		}
 
 		static void AssertHeadersEqual (string description, HeaderId id, string expected, string actual)

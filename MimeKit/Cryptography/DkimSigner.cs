@@ -50,7 +50,7 @@ namespace MimeKit.Cryptography {
 		static readonly string[] DkimShouldNotInclude = { "return-path", "received", "comments", "keywords", "bcc", "resent-bcc", "dkim-signature" };
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="T:MimeKit.Cryptography.DkimSigner"/> class.
+		/// Initialize a new instance of the <see cref="DkimSigner"/> class.
 		/// </summary>
 		/// <remarks>
 		/// <para>Creates a new <see cref="DkimSigner"/>.</para>
@@ -72,7 +72,7 @@ namespace MimeKit.Cryptography {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.DkimSigner"/> class.
+		/// Initialize a new instance of the <see cref="DkimSigner"/> class.
 		/// </summary>
 		/// <remarks>
 		/// <para>Creates a new <see cref="DkimSigner"/>.</para>
@@ -107,7 +107,7 @@ namespace MimeKit.Cryptography {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.DkimSigner"/> class.
+		/// Initialize a new instance of the <see cref="DkimSigner"/> class.
 		/// </summary>
 		/// <remarks>
 		/// <para>Creates a new <see cref="DkimSigner"/>.</para>
@@ -132,8 +132,7 @@ namespace MimeKit.Cryptography {
 		/// </exception>
 		/// <exception cref="System.ArgumentException">
 		/// <paramref name="fileName"/> is a zero-length string, contains only white space, or
-		/// contains one or more invalid characters as defined by
-		/// <see cref="System.IO.Path.InvalidPathChars"/>.
+		/// contains one or more invalid characters.
 		/// </exception>
 		/// <exception cref="System.FormatException">
 		/// The file did not contain a private key.
@@ -163,7 +162,7 @@ namespace MimeKit.Cryptography {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.DkimSigner"/> class.
+		/// Initialize a new instance of the <see cref="DkimSigner"/> class.
 		/// </summary>
 		/// <remarks>
 		/// <para>Creates a new <see cref="DkimSigner"/>.</para>

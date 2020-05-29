@@ -34,7 +34,7 @@ using MimeKit.IO.Filters;
 
 namespace MimeKit {
 	/// <summary>
-	/// Encapsulates a content stream used by <see cref="MimeKit.MimePart"/>.
+	/// Encapsulates a content stream used by <see cref="MimePart"/>.
 	/// </summary>
 	/// <remarks>
 	/// A <see cref="MimeContent"/> represents the content of a <see cref="MimePart"/>.
@@ -44,11 +44,11 @@ namespace MimeKit {
 	public class ContentObject : MimeContent
 	{
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.ContentObject"/> class.
+		/// Initialize a new instance of the <see cref="ContentObject"/> class.
 		/// </summary>
 		/// <remarks>
-		/// When creating new <see cref="MimeKit.MimePart"/>s, the <paramref name="encoding"/>
-		/// should typically be <see cref="MimeKit.ContentEncoding.Default"/> unless the
+		/// When creating new <see cref="MimePart"/>s, the <paramref name="encoding"/>
+		/// should typically be <see cref="ContentEncoding.Default"/> unless the
 		/// <paramref name="stream"/> has already been encoded.
 		/// </remarks>
 		/// <param name="stream">The content stream.</param>
@@ -66,7 +66,7 @@ namespace MimeKit {
 	}
 
 	/// <summary>
-	/// Encapsulates a content stream used by <see cref="MimeKit.MimePart"/>.
+	/// Encapsulates a content stream used by <see cref="MimePart"/>.
 	/// </summary>
 	/// <remarks>
 	/// A <see cref="MimeContent"/> represents the content of a <see cref="MimePart"/>.
@@ -78,11 +78,11 @@ namespace MimeKit {
 	public class MimeContent : IMimeContent
 	{
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.MimeContent"/> class.
+		/// Initialize a new instance of the <see cref="MimeContent"/> class.
 		/// </summary>
 		/// <remarks>
-		/// When creating new <see cref="MimeKit.MimePart"/>s, the <paramref name="encoding"/>
-		/// should typically be <see cref="MimeKit.ContentEncoding.Default"/> unless the
+		/// When creating new <see cref="MimePart"/>s, the <paramref name="encoding"/>
+		/// should typically be <see cref="ContentEncoding.Default"/> unless the
 		/// <paramref name="stream"/> has already been encoded.
 		/// </remarks>
 		/// <param name="stream">The content stream.</param>
@@ -113,7 +113,7 @@ namespace MimeKit {
 		#region IContentObject implementation
 
 		/// <summary>
-		/// Gets or sets the content encoding.
+		/// Get or set the content encoding.
 		/// </summary>
 		/// <remarks>
 		/// If the <see cref="MimePart"/> was parsed from an existing stream, the
@@ -126,7 +126,18 @@ namespace MimeKit {
 		}
 
 		/// <summary>
-		/// Gets the content stream.
+		/// Get the new-line format, if known.
+		/// </summary>
+		/// <remarks>
+		/// <para>This property is typically only set by the <see cref="MimeParser"/> as it parses
+		/// the content of a <see cref="MimePart"/> and is only used as a hint when verifying
+		/// digital signatures.</para>
+		/// </remarks>
+		/// <value>The new-line format, if known.</value>
+		public NewLineFormat? NewLineFormat { get; set; }
+
+		/// <summary>
+		/// Get the content stream.
 		/// </summary>
 		/// <remarks>
 		/// Gets the content stream.
@@ -137,7 +148,7 @@ namespace MimeKit {
 		}
 
 		/// <summary>
-		/// Opens the decoded content stream.
+		/// Open the decoded content stream.
 		/// </summary>
 		/// <remarks>
 		/// Provides a means of reading the decoded content without having to first write it to another
@@ -155,7 +166,7 @@ namespace MimeKit {
 		}
 
 		/// <summary>
-		/// Copies the content stream to the specified output stream.
+		/// Copy the content stream to the specified output stream.
 		/// </summary>
 		/// <remarks>
 		/// <para>This is equivalent to simply using <see cref="System.IO.Stream.CopyTo(System.IO.Stream)"/>
@@ -218,7 +229,7 @@ namespace MimeKit {
 		}
 
 		/// <summary>
-		/// Asynchronously copies the content stream to the specified output stream.
+		/// Asynchronously copy the content stream to the specified output stream.
 		/// </summary>
 		/// <remarks>
 		/// <para>This is equivalent to simply using <see cref="System.IO.Stream.CopyTo(System.IO.Stream)"/>
@@ -269,7 +280,7 @@ namespace MimeKit {
 		}
 
 		/// <summary>
-		/// Decodes the content stream into another stream.
+		/// Decode the content stream into another stream.
 		/// </summary>
 		/// <remarks>
 		/// If the content stream is encoded, this method will decode it into the output stream
@@ -303,7 +314,7 @@ namespace MimeKit {
 		}
 
 		/// <summary>
-		/// Asynchronously decodes the content stream into another stream.
+		/// Asynchronously decode the content stream into another stream.
 		/// </summary>
 		/// <remarks>
 		/// If the content stream is encoded, this method will decode it into the output stream

@@ -53,7 +53,7 @@ namespace MimeKit.Cryptography {
 		static readonly string[] ArcShouldNotInclude = { "return-path", "received", "comments", "keywords", "bcc", "resent-bcc", "arc-seal" };
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="T:MimeKit.Cryptography.ArcSigner"/> class.
+		/// Initialize a new instance of the <see cref="ArcSigner"/> class.
 		/// </summary>
 		/// <remarks>
 		/// Creates a new <see cref="ArcSigner"/>.
@@ -71,7 +71,7 @@ namespace MimeKit.Cryptography {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.ArcSigner"/> class.
+		/// Initialize a new instance of the <see cref="ArcSigner"/> class.
 		/// </summary>
 		/// <remarks>
 		/// Creates a new <see cref="ArcSigner"/>.
@@ -102,7 +102,7 @@ namespace MimeKit.Cryptography {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.ArcSigner"/> class.
+		/// Initialize a new instance of the <see cref="ArcSigner"/> class.
 		/// </summary>
 		/// <remarks>
 		/// Creates a new <see cref="ArcSigner"/>.
@@ -123,8 +123,7 @@ namespace MimeKit.Cryptography {
 		/// </exception>
 		/// <exception cref="System.ArgumentException">
 		/// <paramref name="fileName"/> is a zero-length string, contains only white space, or
-		/// contains one or more invalid characters as defined by
-		/// <see cref="System.IO.Path.InvalidPathChars"/>.
+		/// contains one or more invalid characters.
 		/// </exception>
 		/// <exception cref="System.FormatException">
 		/// The file did not contain a private key.
@@ -154,7 +153,7 @@ namespace MimeKit.Cryptography {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.ArcSigner"/> class.
+		/// Initialize a new instance of the <see cref="ArcSigner"/> class.
 		/// </summary>
 		/// <remarks>
 		/// Creates a new <see cref="ArcSigner"/>.

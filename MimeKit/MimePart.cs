@@ -57,11 +57,11 @@ namespace MimeKit {
 		int? duration;
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.MimePart"/> class
+		/// Initialize a new instance of the <see cref="MimePart"/> class
 		/// based on the <see cref="MimeEntityConstructorArgs"/>.
 		/// </summary>
 		/// <remarks>
-		/// This constructor is used by <see cref="MimeKit.MimeParser"/>.
+		/// This constructor is used by <see cref="MimeParser"/>.
 		/// </remarks>
 		/// <param name="args">Information used by the constructor.</param>
 		/// <exception cref="System.ArgumentNullException">
@@ -72,7 +72,7 @@ namespace MimeKit {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.MimePart"/> class
+		/// Initialize a new instance of the <see cref="MimePart"/> class
 		/// with the specified media type and subtype.
 		/// </summary>
 		/// <remarks>
@@ -89,7 +89,7 @@ namespace MimeKit {
 		/// <para><paramref name="args"/> is <c>null</c>.</para>
 		/// </exception>
 		/// <exception cref="System.ArgumentException">
-		/// <para><paramref name="args"/> contains more than one <see cref="MimeKit.IMimeContent"/> or
+		/// <para><paramref name="args"/> contains more than one <see cref="IMimeContent"/> or
 		/// <see cref="System.IO.Stream"/>.</para>
 		/// <para>-or-</para>
 		/// <para><paramref name="args"/> contains one or more arguments of an unknown type.</para>
@@ -105,8 +105,7 @@ namespace MimeKit {
 				if (obj == null || TryInit (obj))
 					continue;
 
-				var co = obj as IMimeContent;
-				if (co != null) {
+				if (obj is IMimeContent co) {
 					if (content != null)
 						throw new ArgumentException ("IMimeContent should not be specified more than once.");
 
@@ -114,8 +113,7 @@ namespace MimeKit {
 					continue;
 				}
 
-				var stream = obj as Stream;
-				if (stream != null) {
+				if (obj is Stream stream) {
 					if (content != null)
 						throw new ArgumentException ("Stream (used as content) should not be specified more than once.");
 
@@ -132,7 +130,7 @@ namespace MimeKit {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.MimePart"/> class
+		/// Initialize a new instance of the <see cref="MimePart"/> class
 		/// with the specified media type and subtype.
 		/// </summary>
 		/// <remarks>
@@ -150,7 +148,7 @@ namespace MimeKit {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.MimePart"/> class
+		/// Initialize a new instance of the <see cref="MimePart"/> class
 		/// with the specified content type.
 		/// </summary>
 		/// <remarks>
@@ -165,7 +163,7 @@ namespace MimeKit {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.MimePart"/> class
+		/// Initialize a new instance of the <see cref="MimePart"/> class
 		/// with the specified content type.
 		/// </summary>
 		/// <remarks>
@@ -183,7 +181,7 @@ namespace MimeKit {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.MimePart"/> class
+		/// Initialize a new instance of the <see cref="MimePart"/> class
 		/// with the default Content-Type of application/octet-stream.
 		/// </summary>
 		/// <remarks>
@@ -353,12 +351,12 @@ namespace MimeKit {
 		/// Dispatches to the specific visit method for this MIME entity.
 		/// </summary>
 		/// <remarks>
-		/// This default implementation for <see cref="MimeKit.MimePart"/> nodes
-		/// calls <see cref="MimeKit.MimeVisitor.VisitMimePart"/>. Override this
+		/// This default implementation for <see cref="MimePart"/> nodes
+		/// calls <see cref="MimeVisitor.VisitMimePart"/>. Override this
 		/// method to call into a more specific method on a derived visitor class
-		/// of the <see cref="MimeKit.MimeVisitor"/> class. However, it should still
+		/// of the <see cref="MimeVisitor"/> class. However, it should still
 		/// support unknown visitors by calling
-		/// <see cref="MimeKit.MimeVisitor.VisitMimePart"/>.
+		/// <see cref="MimeVisitor.VisitMimePart"/>.
 		/// </remarks>
 		/// <param name="visitor">The visitor.</param>
 		/// <exception cref="System.ArgumentNullException">
@@ -540,7 +538,7 @@ namespace MimeKit {
 		}
 
 		/// <summary>
-		/// Writes the <see cref="MimeKit.MimePart"/> to the specified output stream.
+		/// Write the <see cref="MimePart"/> to the specified output stream.
 		/// </summary>
 		/// <remarks>
 		/// Writes the MIME part to the output stream.
@@ -607,7 +605,16 @@ namespace MimeKit {
 						stream.Write (options.NewLineBytes, 0, options.NewLineBytes.Length);
 					}
 				}
-			} else if (encoding != ContentEncoding.Binary) {
+			} else if (encoding == ContentEncoding.Binary) {
+				// Do not alter binary content.
+				Content.WriteTo (stream, cancellationToken);
+			} else if (options.VerifyingSignature && Content.NewLineFormat.HasValue && Content.NewLineFormat.Value == NewLineFormat.Mixed) {
+				// Allow pass-through of the original parsed content without canonicalization when verifying signatures
+				// if the content contains a mix of line-endings.
+				//
+				// See https://github.com/jstedfast/MimeKit/issues/569 for details.
+				Content.WriteTo (stream, cancellationToken);
+			} else {
 				using (var filtered = new FilteredStream (stream)) {
 					// Note: if we are writing the top-level MimePart, make sure it ends with a new-line so that
 					// MimeMessage.WriteTo() *always* ends with a new-line.
@@ -615,13 +622,11 @@ namespace MimeKit {
 					Content.WriteTo (filtered, cancellationToken);
 					filtered.Flush (cancellationToken);
 				}
-			} else {
-				Content.WriteTo (stream, cancellationToken);
 			}
 		}
 
 		/// <summary>
-		/// Asynchronously writes the <see cref="MimeKit.MimePart"/> to the specified output stream.
+		/// Asynchronously write the <see cref="MimePart"/> to the specified output stream.
 		/// </summary>
 		/// <remarks>
 		/// Asynchronously writes the MIME part to the output stream.
@@ -649,6 +654,8 @@ namespace MimeKit {
 			if (Content == null)
 				return;
 
+			var isText = ContentType.IsMimeType ("text", "*") || ContentType.IsMimeType ("message", "*");
+
 			if (Content.Encoding != encoding) {
 				if (encoding == ContentEncoding.UUEncode) {
 					var begin = string.Format ("begin 0644 {0}", FileName ?? "unknown");
@@ -675,7 +682,16 @@ namespace MimeKit {
 					await stream.WriteAsync (buffer, 0, buffer.Length, cancellationToken).ConfigureAwait (false);
 					await stream.WriteAsync (options.NewLineBytes, 0, options.NewLineBytes.Length, cancellationToken).ConfigureAwait (false);
 				}
-			} else if (encoding != ContentEncoding.Binary) {
+			} else if (encoding == ContentEncoding.Binary) {
+				// Do not alter binary content.
+				await Content.WriteToAsync (stream, cancellationToken).ConfigureAwait (false);
+			} else if (options.VerifyingSignature && Content.NewLineFormat.HasValue && Content.NewLineFormat.Value == NewLineFormat.Mixed) {
+				// Allow pass-through of the original parsed content without canonicalization when verifying signatures
+				// if the content contains a mix of line-endings.
+				//
+				// See https://github.com/jstedfast/MimeKit/issues/569 for details.
+				await Content.WriteToAsync (stream, cancellationToken).ConfigureAwait (false);
+			} else {
 				using (var filtered = new FilteredStream (stream)) {
 					// Note: if we are writing the top-level MimePart, make sure it ends with a new-line so that
 					// MimeMessage.WriteTo() *always* ends with a new-line.
@@ -683,8 +699,6 @@ namespace MimeKit {
 					await Content.WriteToAsync (filtered, cancellationToken).ConfigureAwait (false);
 					await filtered.FlushAsync (cancellationToken).ConfigureAwait (false);
 				}
-			} else {
-				await Content.WriteToAsync (stream, cancellationToken).ConfigureAwait (false);
 			}
 		}
 

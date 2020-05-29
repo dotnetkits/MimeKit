@@ -89,7 +89,7 @@ namespace MimeKit.Cryptography {
 		Uri keyServer;
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.OpenPgpContext"/> class.
+		/// Initialize a new instance of the <see cref="OpenPgpContext"/> class.
 		/// </summary>
 		/// <remarks>
 		/// Subclasses choosing to use this constructor MUST set the <see cref="PublicKeyRingPath"/>,
@@ -113,7 +113,7 @@ namespace MimeKit.Cryptography {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.OpenPgpContext"/> class.
+		/// Initialize a new instance of the <see cref="OpenPgpContext"/> class.
 		/// </summary>
 		/// <remarks>
 		/// Creates a new <see cref="OpenPgpContext"/> using the specified public and private keyring paths.
@@ -549,7 +549,7 @@ namespace MimeKit.Cryptography {
 		/// Enumerates all public keyrings.
 		/// </remarks>
 		/// <returns>The list of available public keyrings.</returns>
-		public IEnumerable<PgpPublicKeyRing> EnumeratePublicKeyRings ()
+		public virtual IEnumerable<PgpPublicKeyRing> EnumeratePublicKeyRings ()
 		{
 			foreach (PgpPublicKeyRing keyring in PublicKeyRingBundle.GetKeyRings ())
 				yield return keyring;
@@ -564,7 +564,7 @@ namespace MimeKit.Cryptography {
 		/// Enumerates all public keys.
 		/// </remarks>
 		/// <returns>The list of available public keys.</returns>
-		public IEnumerable<PgpPublicKey> EnumeratePublicKeys ()
+		public virtual IEnumerable<PgpPublicKey> EnumeratePublicKeys ()
 		{
 			foreach (var keyring in EnumeratePublicKeyRings ()) {
 				foreach (PgpPublicKey key in keyring.GetPublicKeys ())
@@ -585,7 +585,7 @@ namespace MimeKit.Cryptography {
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="mailbox"/> is <c>null</c>.
 		/// </exception>
-		public IEnumerable<PgpPublicKeyRing> EnumeratePublicKeyRings (MailboxAddress mailbox)
+		public virtual IEnumerable<PgpPublicKeyRing> EnumeratePublicKeyRings (MailboxAddress mailbox)
 		{
 			if (mailbox == null)
 				throw new ArgumentNullException (nameof (mailbox));
@@ -609,7 +609,7 @@ namespace MimeKit.Cryptography {
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="mailbox"/> is <c>null</c>.
 		/// </exception>
-		public IEnumerable<PgpPublicKey> EnumeratePublicKeys (MailboxAddress mailbox)
+		public virtual IEnumerable<PgpPublicKey> EnumeratePublicKeys (MailboxAddress mailbox)
 		{
 			foreach (var keyring in EnumeratePublicKeyRings (mailbox)) {
 				foreach (PgpPublicKey key in keyring.GetPublicKeys ())
@@ -626,7 +626,7 @@ namespace MimeKit.Cryptography {
 		/// Enumerates all secret keyrings.
 		/// </remarks>
 		/// <returns>The list of available secret keyrings.</returns>
-		public IEnumerable<PgpSecretKeyRing> EnumerateSecretKeyRings ()
+		public virtual IEnumerable<PgpSecretKeyRing> EnumerateSecretKeyRings ()
 		{
 			foreach (PgpSecretKeyRing keyring in SecretKeyRingBundle.GetKeyRings ())
 				yield return keyring;
@@ -641,7 +641,7 @@ namespace MimeKit.Cryptography {
 		/// Enumerates all secret keys.
 		/// </remarks>
 		/// <returns>The list of available secret keys.</returns>
-		public IEnumerable<PgpSecretKey> EnumerateSecretKeys ()
+		public virtual IEnumerable<PgpSecretKey> EnumerateSecretKeys ()
 		{
 			foreach (var keyring in EnumerateSecretKeyRings ()) {
 				foreach (PgpSecretKey key in keyring.GetSecretKeys ())
@@ -662,7 +662,7 @@ namespace MimeKit.Cryptography {
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="mailbox"/> is <c>null</c>.
 		/// </exception>
-		public IEnumerable<PgpSecretKeyRing> EnumerateSecretKeyRings (MailboxAddress mailbox)
+		public virtual IEnumerable<PgpSecretKeyRing> EnumerateSecretKeyRings (MailboxAddress mailbox)
 		{
 			if (mailbox == null)
 				throw new ArgumentNullException (nameof (mailbox));
@@ -686,7 +686,7 @@ namespace MimeKit.Cryptography {
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="mailbox"/> is <c>null</c>.
 		/// </exception>
-		public IEnumerable<PgpSecretKey> EnumerateSecretKeys (MailboxAddress mailbox)
+		public virtual IEnumerable<PgpSecretKey> EnumerateSecretKeys (MailboxAddress mailbox)
 		{
 			foreach (var keyring in EnumerateSecretKeyRings (mailbox)) {
 				foreach (PgpSecretKey key in keyring.GetSecretKeys ())
@@ -764,9 +764,7 @@ namespace MimeKit.Cryptography {
 
 		static bool PgpSecretKeyMatches (PgpSecretKey key, MailboxAddress mailbox)
 		{
-			var secure = mailbox as SecureMailboxAddress;
-
-			if (secure != null && !string.IsNullOrEmpty (secure.Fingerprint)) {
+			if (mailbox is SecureMailboxAddress secure && !string.IsNullOrEmpty (secure.Fingerprint)) {
 				if (secure.Fingerprint.Length > 16) {
 					var fingerprint = HexEncode (key.PublicKey.GetFingerprint ());
 
@@ -779,9 +777,7 @@ namespace MimeKit.Cryptography {
 			}
 
 			foreach (string userId in key.UserIds) {
-				MailboxAddress email;
-
-				if (!MailboxAddress.TryParse (userId, out email))
+				if (!MailboxAddress.TryParse (userId, out var email))
 					continue;
 
 				if (mailbox.Address.Equals (email.Address, StringComparison.OrdinalIgnoreCase))
@@ -810,11 +806,8 @@ namespace MimeKit.Cryptography {
 			if (mailbox == null)
 				throw new ArgumentNullException (nameof (mailbox));
 
-			foreach (PgpSecretKeyRing keyring in SecretKeyRingBundle.GetKeyRings ()) {
+			foreach (var keyring in EnumerateSecretKeyRings (mailbox)) {
 				foreach (PgpSecretKey key in keyring.GetSecretKeys ()) {
-					if (!PgpSecretKeyMatches (keyring.GetSecretKey (), mailbox))
-						continue;
-
 					if (!key.IsSigningKey)
 						continue;
 
@@ -893,11 +886,9 @@ namespace MimeKit.Cryptography {
 
 		PgpSecretKey GetSecretKey (long keyId)
 		{
-			foreach (PgpSecretKeyRing keyring in SecretKeyRingBundle.GetKeyRings ()) {
-				foreach (PgpSecretKey key in keyring.GetSecretKeys ()) {
-					if (key.KeyId == keyId)
-						return key;
-				}
+			foreach (var key in EnumerateSecretKeys ()) {
+				if (key.KeyId == keyId)
+					return key;
 			}
 
 			throw new PrivateKeyNotFoundException (keyId, "The private key could not be found.");
@@ -1124,8 +1115,7 @@ namespace MimeKit.Cryptography {
 			if (keyring == null)
 				keyring = new PgpPublicKeyRing (signedKey.GetEncoded ());
 
-			PublicKeyRingBundle = PgpPublicKeyRingBundle.AddPublicKeyRing (PublicKeyRingBundle, keyring);
-			SavePublicKeyRingBundle ();
+			Import (keyring);
 		}
 
 		/// <summary>
@@ -1178,20 +1168,15 @@ namespace MimeKit.Cryptography {
 			if (signer == null)
 				throw new ArgumentNullException (nameof (signer));
 
-			foreach (PgpSecretKeyRing keyring in SecretKeyRingBundle.GetKeyRings ()) {
-				foreach (PgpSecretKey key in keyring.GetSecretKeys ()) {
-					if (!PgpSecretKeyMatches (keyring.GetSecretKey (), signer))
-						continue;
+			foreach (var key in EnumerateSecretKeys (signer)) {
+				if (!key.IsSigningKey)
+					continue;
 
-					if (!key.IsSigningKey)
-						continue;
+				var pubkey = key.PublicKey;
+				if (pubkey.IsRevoked () || IsExpired (pubkey))
+					continue;
 
-					var pubkey = key.PublicKey;
-					if (pubkey.IsRevoked () || IsExpired (pubkey))
-						continue;
-
-					return true;
-				}
+				return true;
 			}
 
 			return false;
@@ -1229,7 +1214,7 @@ namespace MimeKit.Cryptography {
 		/// <remarks>
 		/// Cryptographically signs the content using the specified signer and digest algorithm.
 		/// </remarks>
-		/// <returns>A new <see cref="MimeKit.MimePart"/> instance
+		/// <returns>A new <see cref="MimePart"/> instance
 		/// containing the detached signature data.</returns>
 		/// <param name="signer">The signer.</param>
 		/// <param name="digestAlgo">The digest algorithm to use for signing.</param>
@@ -1273,7 +1258,7 @@ namespace MimeKit.Cryptography {
 		/// <remarks>
 		/// Cryptographically signs the content using the specified signer and digest algorithm.
 		/// </remarks>
-		/// <returns>A new <see cref="MimeKit.MimePart"/> instance
+		/// <returns>A new <see cref="MimePart"/> instance
 		/// containing the detached signature data.</returns>
 		/// <param name="signer">The signer.</param>
 		/// <param name="digestAlgo">The digest algorithm to use for signing.</param>
@@ -1603,7 +1588,7 @@ namespace MimeKit.Cryptography {
 		/// <remarks>
 		/// Encrypts the specified content for the specified recipients.
 		/// </remarks>
-		/// <returns>A new <see cref="MimeKit.MimePart"/> instance
+		/// <returns>A new <see cref="MimePart"/> instance
 		/// containing the encrypted data.</returns>
 		/// <param name="recipients">The recipients.</param>
 		/// <param name="content">The content.</param>
@@ -1638,7 +1623,7 @@ namespace MimeKit.Cryptography {
 		/// <remarks>
 		/// Encrypts the specified content for the specified recipients.
 		/// </remarks>
-		/// <returns>A new <see cref="MimeKit.MimePart"/> instance
+		/// <returns>A new <see cref="MimePart"/> instance
 		/// containing the encrypted data.</returns>
 		/// <param name="algorithm">The encryption algorithm.</param>
 		/// <param name="recipients">The recipients.</param>
@@ -1677,7 +1662,7 @@ namespace MimeKit.Cryptography {
 		/// <remarks>
 		/// Encrypts the specified content for the specified recipients.
 		/// </remarks>
-		/// <returns>A new <see cref="MimeKit.MimePart"/> instance
+		/// <returns>A new <see cref="MimePart"/> instance
 		/// containing the encrypted data.</returns>
 		/// <param name="algorithm">The encryption algorithm.</param>
 		/// <param name="recipients">The recipients.</param>
@@ -1734,7 +1719,7 @@ namespace MimeKit.Cryptography {
 		/// <remarks>
 		/// Encrypts the specified content for the specified recipients.
 		/// </remarks>
-		/// <returns>A new <see cref="MimeKit.MimePart"/> instance
+		/// <returns>A new <see cref="MimePart"/> instance
 		/// containing the encrypted data.</returns>
 		/// <param name="recipients">The recipients.</param>
 		/// <param name="content">The content.</param>
@@ -1759,7 +1744,7 @@ namespace MimeKit.Cryptography {
 		/// <remarks>
 		/// Cryptographically signs and encrypts the specified content for the specified recipients.
 		/// </remarks>
-		/// <returns>A new <see cref="MimeKit.MimePart"/> instance
+		/// <returns>A new <see cref="MimePart"/> instance
 		/// containing the encrypted data.</returns>
 		/// <param name="signer">The signer.</param>
 		/// <param name="digestAlgo">The digest algorithm to use for signing.</param>
@@ -1817,7 +1802,7 @@ namespace MimeKit.Cryptography {
 		/// <remarks>
 		/// Cryptographically signs and encrypts the specified content for the specified recipients.
 		/// </remarks>
-		/// <returns>A new <see cref="MimeKit.MimePart"/> instance
+		/// <returns>A new <see cref="MimePart"/> instance
 		/// containing the encrypted data.</returns>
 		/// <param name="signer">The signer.</param>
 		/// <param name="digestAlgo">The digest algorithm to use for signing.</param>
@@ -1869,7 +1854,7 @@ namespace MimeKit.Cryptography {
 		/// <remarks>
 		/// Cryptographically signs and encrypts the specified content for the specified recipients.
 		/// </remarks>
-		/// <returns>A new <see cref="MimeKit.MimePart"/> instance
+		/// <returns>A new <see cref="MimePart"/> instance
 		/// containing the encrypted data.</returns>
 		/// <param name="signer">The signer.</param>
 		/// <param name="digestAlgo">The digest algorithm to use for signing.</param>
@@ -1998,7 +1983,7 @@ namespace MimeKit.Cryptography {
 		/// <remarks>
 		/// Cryptographically signs and encrypts the specified content for the specified recipients.
 		/// </remarks>
-		/// <returns>A new <see cref="MimeKit.MimePart"/> instance
+		/// <returns>A new <see cref="MimePart"/> instance
 		/// containing the encrypted data.</returns>
 		/// <param name="signer">The signer.</param>
 		/// <param name="digestAlgo">The digest algorithm to use for signing.</param>
@@ -2257,7 +2242,7 @@ namespace MimeKit.Cryptography {
 		/// <remarks>
 		/// Decrypts the specified encryptedData and extracts the digital signers if the content was also signed.
 		/// </remarks>
-		/// <returns>The decrypted <see cref="MimeKit.MimeEntity"/>.</returns>
+		/// <returns>The decrypted <see cref="MimeEntity"/>.</returns>
 		/// <param name="encryptedData">The encrypted data.</param>
 		/// <param name="signatures">A list of digital signatures if the data was both signed and encrypted.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
@@ -2294,7 +2279,7 @@ namespace MimeKit.Cryptography {
 		/// <remarks>
 		/// Decrypts the specified encryptedData.
 		/// </remarks>
-		/// <returns>The decrypted <see cref="MimeKit.MimeEntity"/>.</returns>
+		/// <returns>The decrypted <see cref="MimeEntity"/>.</returns>
 		/// <param name="encryptedData">The encrypted data.</param>
 		/// <param name="cancellationToken">The cancellation token.</param>
 		/// <exception cref="System.ArgumentNullException">
@@ -2410,7 +2395,7 @@ namespace MimeKit.Cryptography {
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="keyring"/> is <c>null</c>.
 		/// </exception>
-		public void Import (PgpPublicKeyRing keyring)
+		public virtual void Import (PgpPublicKeyRing keyring)
 		{
 			if (keyring == null)
 				throw new ArgumentNullException (nameof (keyring));
@@ -2429,7 +2414,7 @@ namespace MimeKit.Cryptography {
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="bundle"/> is <c>null</c>.
 		/// </exception>
-		public void Import (PgpPublicKeyRingBundle bundle)
+		public virtual void Import (PgpPublicKeyRingBundle bundle)
 		{
 			if (bundle == null)
 				throw new ArgumentNullException (nameof (bundle));
@@ -2479,7 +2464,7 @@ namespace MimeKit.Cryptography {
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="keyring"/> is <c>null</c>.
 		/// </exception>
-		public void Import (PgpSecretKeyRing keyring)
+		public virtual void Import (PgpSecretKeyRing keyring)
 		{
 			if (keyring == null)
 				throw new ArgumentNullException (nameof (keyring));
@@ -2498,7 +2483,7 @@ namespace MimeKit.Cryptography {
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="bundle"/> is <c>null</c>.
 		/// </exception>
-		public void Import (PgpSecretKeyRingBundle bundle)
+		public virtual void Import (PgpSecretKeyRingBundle bundle)
 		{
 			if (bundle == null)
 				throw new ArgumentNullException (nameof (bundle));
@@ -2520,7 +2505,7 @@ namespace MimeKit.Cryptography {
 		/// <remarks>
 		/// Exports the public keys for the specified mailboxes.
 		/// </remarks>
-		/// <returns>A new <see cref="MimeKit.MimePart"/> instance containing the exported public keys.</returns>
+		/// <returns>A new <see cref="MimePart"/> instance containing the exported public keys.</returns>
 		/// <param name="mailboxes">The mailboxes associated with the public keys to export.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="mailboxes"/> is <c>null</c>.
@@ -2548,7 +2533,7 @@ namespace MimeKit.Cryptography {
 		/// <remarks>
 		/// Exports the specified public keys.
 		/// </remarks>
-		/// <returns>A new <see cref="MimeKit.MimePart"/> instance containing the exported public keys.</returns>
+		/// <returns>A new <see cref="MimePart"/> instance containing the exported public keys.</returns>
 		/// <param name="keys">The public keys to export.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="keys"/> is <c>null</c>.
@@ -2570,7 +2555,7 @@ namespace MimeKit.Cryptography {
 		/// <remarks>
 		/// Exports the specified public keys.
 		/// </remarks>
-		/// <returns>A new <see cref="MimeKit.MimePart"/> instance containing the exported public keys.</returns>
+		/// <returns>A new <see cref="MimePart"/> instance containing the exported public keys.</returns>
 		/// <param name="keys">The public keys to export.</param>
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="keys"/> is <c>null</c>.
@@ -2632,7 +2617,7 @@ namespace MimeKit.Cryptography {
 		/// <remarks>
 		/// Exports the specified public keys.
 		/// </remarks>
-		/// <returns>A new <see cref="MimeKit.MimePart"/> instance containing the exported public keys.</returns>
+		/// <returns>A new <see cref="MimePart"/> instance containing the exported public keys.</returns>
 		/// <param name="keys">The public keys to export.</param>
 		/// <param name="stream">The output stream.</param>
 		/// <param name="armor"><c>true</c> if the output should be armored; otherwise, <c>false</c>.</param>
@@ -2705,7 +2690,7 @@ namespace MimeKit.Cryptography {
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="keyring"/> is <c>null</c>.
 		/// </exception>
-		public void Delete (PgpPublicKeyRing keyring)
+		public virtual void Delete (PgpPublicKeyRing keyring)
 		{
 			if (keyring == null)
 				throw new ArgumentNullException (nameof (keyring));
@@ -2724,7 +2709,7 @@ namespace MimeKit.Cryptography {
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="keyring"/> is <c>null</c>.
 		/// </exception>
-		public void Delete (PgpSecretKeyRing keyring)
+		public virtual void Delete (PgpSecretKeyRing keyring)
 		{
 			if (keyring == null)
 				throw new ArgumentNullException (nameof (keyring));

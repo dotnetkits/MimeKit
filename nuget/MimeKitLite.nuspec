@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata minClientVersion="2.12">
     <id>MimeKitLite</id>
-    <version>2.6.0</version>
+    <version>2.7.0</version>
     <title>MimeKit Lite</title>
     <authors>Jeffrey Stedfast</authors>
     <owners>Jeffrey Stedfast</owners>
@@ -14,7 +14,7 @@
     <description>
       MimeKit is an Open Source library for creating and parsing MIME messages. It also supports parsing of Unix mbox files.
 
-      Unlike any other .NET MIME parser, MimeKit's parser does not need to parse string input nor does it use a TextReader. Instead, it parses raw byte streams, thus allowing it to better support undeclared 8bit text in headers as well as message bodies. It also means that MimeKit's parser is significantly faster than other .NET MIME parsers (more than 25x faster than OpenPOP.NET and over 100x faster than AE.Net.Mail and MailSystem.NET).
+      Unlike any other .NET MIME parser, MimeKit's parser does not need to parse string input nor does it use a TextReader. Instead, it parses raw byte streams, thus allowing it to better support undeclared 8bit text in headers as well as message bodies. It also means that MimeKit's parser is significantly faster than other .NET MIME parsers.
 
       MimeKit's parser also uses a real tokenizer when parsing the headers rather than regex or string.Split() like most other .NET MIME parsers. This means that MimeKit is much more RFC-compliant than any other .NET MIME parser out there, including the commercial implementations.
 
@@ -26,17 +26,15 @@
     </description>
     <summary>An Open Source library for creating and parsing MIME messages.</summary>
     <releaseNotes>
-* Fixed the MimeEntity.ContentId setter to use ParseUtils.TryParseMsgId() instead of MailboxAddress.TryParse() so that it is more lenient in what it accepts. (issue #542)
-* Added an HtmlTokenizer.IgnoreTruncatedTags property which is useful when working with truncated HTML.
-* Optimized the heck out of HtmlEntityDecoder.
-* Added a TextPart.Format property for a quick way to determine the type of text it contains.
-* Added text/plain and text/html preview/snippet generators (PlainTextPreviewer and HtmlTextPreviewer, respectively). This is part of a larger improvement to MailKit's text preview feature for IMAP. (MailKit issue #1001)
-* Fixed SqlCertificateDatabase to accept null SubjectKeyIdentifiers.
-* Changed Header.FormatRawValue() to be protected virtual and added Header.SetRawValue() to allow developers to override the default formatting behavior by either subclassing Header or by calling header.SetRawValue(). (issue #546)
+* Fixed InternetAddressList.Insert() to allow inserting at the end of the list. (issue #559)
+* Added ParserOptions.MaxMimeDepth to allow developers to set the max nesting depth allowed by the parser.
+* Added logic to handle multipart children without any headers or content.
+* Fixed MimePart.WriteTo() to avoid canonicalizing line endings for MimeParts that do not define a Content-Transfer-Encoding. (issue #569)
+* NuGet packages now include the portable pdb's.
     </releaseNotes>
     <copyright>Xamarin Inc.</copyright>
     <language>en-US</language>
-    <tags>mime mbox mail email parser tnef net45 netstandard netstandard1.3 netstandard1.6 netstandard2.0 xamarin android ios monodroid monoandroid</tags>
+    <tags>mime mbox mail email parser tnef net45 net46 net47 net48 netstandard netstandard1.3 netstandard1.6 netstandard2.0</tags>
     <frameworkAssemblies>
       <frameworkAssembly assemblyName="System" targetFramework=".NETFramework4.5" />
       <frameworkAssembly assemblyName="System.Core" targetFramework=".NETFramework4.5" />
@@ -60,43 +58,43 @@
       <group targetFramework="net46" />
       <group targetFramework="net47" />
       <group targetFramework="net48" />
-      <group targetFramework="monoandroid" />
-      <group targetFramework="xamarinios" />
       <group targetFramework="netstandard1.3">
-        <dependency id="System.Reflection.TypeExtensions" version="4.3.0" />
+        <dependency id="System.Reflection.TypeExtensions" version="4.4.0" />
         <dependency id="System.Globalization.Extensions" version="4.3.0" />
-        <dependency id="System.Text.Encoding.CodePages" version="4.3.0" />
+        <dependency id="System.Text.Encoding.CodePages" version="4.4.0" />
       </group>
       <group targetFramework="netstandard1.6">
-        <dependency id="System.Reflection.TypeExtensions" version="4.3.0" />
+        <dependency id="System.Reflection.TypeExtensions" version="4.4.0" />
         <dependency id="System.Globalization.Extensions" version="4.3.0" />
-        <dependency id="System.Text.Encoding.CodePages" version="4.3.0" />
+        <dependency id="System.Text.Encoding.CodePages" version="4.4.0" />
       </group>
       <group targetFramework="netstandard2.0">
-        <dependency id="System.Reflection.TypeExtensions" version="4.3.0" />
-        <dependency id="System.Globalization.Extensions" version="4.3.0" />
-        <dependency id="System.Text.Encoding.CodePages" version="4.3.0" />
+        <dependency id="System.Reflection.TypeExtensions" version="4.4.0" />
+        <dependency id="System.Text.Encoding.CodePages" version="4.4.0" />
       </group>
     </dependencies>
   </metadata>
   <files>
     <file src="..\MimeKit\bin\Release\netstandard1.3\MimeKitLite.dll" target="lib\netstandard1.3\MimeKitLite.dll" />
+    <file src="..\MimeKit\bin\Release\netstandard1.3\MimeKitLite.pdb" target="lib\netstandard1.3\MimeKitLite.pdb" />
     <file src="..\MimeKit\bin\Release\netstandard1.3\MimeKitLite.xml" target="lib\netstandard1.3\MimeKitLite.xml" />
     <file src="..\MimeKit\bin\Release\netstandard1.6\MimeKitLite.dll" target="lib\netstandard1.6\MimeKitLite.dll" />
+    <file src="..\MimeKit\bin\Release\netstandard1.6\MimeKitLite.pdb" target="lib\netstandard1.6\MimeKitLite.pdb" />
     <file src="..\MimeKit\bin\Release\netstandard1.6\MimeKitLite.xml" target="lib\netstandard1.6\MimeKitLite.xml" />
     <file src="..\MimeKit\bin\Release\netstandard2.0\MimeKitLite.dll" target="lib\netstandard2.0\MimeKitLite.dll" />
+    <file src="..\MimeKit\bin\Release\netstandard2.0\MimeKitLite.pdb" target="lib\netstandard2.0\MimeKitLite.pdb" />
     <file src="..\MimeKit\bin\Release\netstandard2.0\MimeKitLite.xml" target="lib\netstandard2.0\MimeKitLite.xml" />
-    <file src="..\MimeKit\bin\Release\MonoAndroid\MimeKitLite.dll" target="lib\monoandroid\MimeKitLite.dll" />
-    <file src="..\MimeKit\bin\Release\MonoAndroid\MimeKitLite.xml" target="lib\monoandroid\MimeKitLite.xml" />
-    <file src="..\MimeKit\bin\Release\Xamarin.iOS\MimeKitLite.dll" target="lib\xamarinios\MimeKitLite.dll" />
-    <file src="..\MimeKit\bin\Release\Xamarin.iOS\MimeKitLite.xml" target="lib\xamarinios\MimeKitLite.xml" />
     <file src="..\MimeKit\bin\Release\net45\MimeKitLite.dll" target="lib\net45\MimeKitLite.dll" />
+    <file src="..\MimeKit\bin\Release\net45\MimeKitLite.pdb" target="lib\net45\MimeKitLite.pdb" />
     <file src="..\MimeKit\bin\Release\net45\MimeKitLite.xml" target="lib\net45\MimeKitLite.xml" />
     <file src="..\MimeKit\bin\Release\net46\MimeKitLite.dll" target="lib\net46\MimeKitLite.dll" />
+    <file src="..\MimeKit\bin\Release\net46\MimeKitLite.pdb" target="lib\net46\MimeKitLite.pdb" />
     <file src="..\MimeKit\bin\Release\net46\MimeKitLite.xml" target="lib\net46\MimeKitLite.xml" />
     <file src="..\MimeKit\bin\Release\net47\MimeKitLite.dll" target="lib\net47\MimeKitLite.dll" />
+    <file src="..\MimeKit\bin\Release\net47\MimeKitLite.pdb" target="lib\net47\MimeKitLite.pdb" />
     <file src="..\MimeKit\bin\Release\net47\MimeKitLite.xml" target="lib\net47\MimeKitLite.xml" />
     <file src="..\MimeKit\bin\Release\net48\MimeKitLite.dll" target="lib\net48\MimeKitLite.dll" />
+    <file src="..\MimeKit\bin\Release\net48\MimeKitLite.pdb" target="lib\net48\MimeKitLite.pdb" />
     <file src="..\MimeKit\bin\Release\net48\MimeKitLite.xml" target="lib\net48\MimeKitLite.xml" />
     <file src="mimekit-50.png" target="icons\mimekit-50.png" />
   </files>

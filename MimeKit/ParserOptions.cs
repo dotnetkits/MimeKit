@@ -106,8 +106,20 @@ namespace MimeKit {
 		/// formed. If the value is set too large, then it is possible that a maliciously formed set of
 		/// recursive group addresses could cause a stack overflow.</para>
 		/// </remarks>
-		/// <value>The max address group depth.</value>
+		/// <value>The maximum address group depth.</value>
 		public int MaxAddressGroupDepth { get; set; }
+
+		/// <summary>
+		/// Gets or sets the maximum MIME nesting depth the parser should accept.
+		/// </summary>
+		/// <remarks>
+		/// <para>This option exists in order to define the maximum recursive depth of MIME parts that the parser
+		/// should accept before treating further nesting as a leaf-node MIME part and not recursing any further.
+		/// If the value is set too large, then it is possible that a maliciously formed set of rdeeply nested
+		/// multipart MIME parts could cause a stack overflow.</para>
+		/// </remarks>
+		/// <value>The maximum MIME nesting depth.</value>
+		public int MaxMimeDepth { get; set; }
 
 		/// <summary>
 		/// Gets or sets the compliance mode that should be used when parsing Content-Type and Content-Disposition parameters.
@@ -151,8 +163,8 @@ namespace MimeKit {
 		/// Gets or sets the charset encoding to use as a fallback for 8bit headers.
 		/// </summary>
 		/// <remarks>
-		/// <see cref="MimeKit.Utils.Rfc2047.DecodeText(ParserOptions, byte[])"/> and
-		/// <see cref="MimeKit.Utils.Rfc2047.DecodePhrase(ParserOptions, byte[])"/>
+		/// <see cref="Rfc2047.DecodeText(ParserOptions, byte[])"/> and
+		/// <see cref="Rfc2047.DecodePhrase(ParserOptions, byte[])"/>
 		/// use this charset encoding as a fallback when decoding 8bit text into unicode. The first
 		/// charset encoding attempted is UTF-8, followed by this charset encoding, before finally
 		/// falling back to iso-8859-1.
@@ -161,7 +173,7 @@ namespace MimeKit {
 		public Encoding CharsetEncoding { get; set; }
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.ParserOptions"/> class.
+		/// Initialize a new instance of the <see cref="ParserOptions"/> class.
 		/// </summary>
 		/// <remarks>
 		/// By default, new instances of <see cref="ParserOptions"/> enable rfc2047 work-arounds
@@ -178,10 +190,11 @@ namespace MimeKit {
 			AllowAddressesWithoutDomain = true;
 			RespectContentLength = false;
 			MaxAddressGroupDepth = 3;
+			MaxMimeDepth = 1024;
 		}
 
 		/// <summary>
-		/// Clones an instance of <see cref="MimeKit.ParserOptions"/>.
+		/// Clones an instance of <see cref="ParserOptions"/>.
 		/// </summary>
 		/// <remarks>
 		/// Clones a set of options, allowing you to change a specific option
@@ -199,6 +212,7 @@ namespace MimeKit {
 			options.MaxAddressGroupDepth = MaxAddressGroupDepth;
 			options.RespectContentLength = RespectContentLength;
 			options.CharsetEncoding = CharsetEncoding;
+			options.MaxMimeDepth = MaxMimeDepth;
 
 			foreach (var mimeType in mimeTypes)
 				options.mimeTypes.Add (mimeType.Key, mimeType.Value);
@@ -281,9 +295,13 @@ namespace MimeKit {
 			return false;
 		}
 
-		internal MimeEntity CreateEntity (ContentType contentType, IList<Header> headers, bool toplevel)
+		internal MimeEntity CreateEntity (ContentType contentType, IList<Header> headers, bool toplevel, int depth)
 		{
 			var args = new MimeEntityConstructorArgs (this, contentType, headers, toplevel);
+
+			if (depth >= MaxMimeDepth)
+				return new MimePart (args);
+
 			var subtype = contentType.MediaSubtype.ToLowerInvariant ();
 			var type = contentType.MediaType.ToLowerInvariant ();
 

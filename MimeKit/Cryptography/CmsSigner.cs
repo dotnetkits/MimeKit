@@ -48,11 +48,11 @@ namespace MimeKit.Cryptography {
 	public class CmsSigner
 	{
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.CmsSigner"/> class.
+		/// Initialize a new instance of the <see cref="CmsSigner"/> class.
 		/// </summary>
 		/// <remarks>
 		/// <para>The initial value of the <see cref="DigestAlgorithm"/> will be set to
-		/// <see cref="MimeKit.Cryptography.DigestAlgorithm.Sha256"/> and both the
+		/// <see cref="DigestAlgorithm.Sha256"/> and both the
 		/// <see cref="SignedAttributes"/> and <see cref="UnsignedAttributes"/> properties
 		/// will be initialized to empty tables.</para>
 		/// </remarks>
@@ -80,11 +80,11 @@ namespace MimeKit.Cryptography {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.CmsSigner"/> class.
+		/// Initialize a new instance of the <see cref="CmsSigner"/> class.
 		/// </summary>
 		/// <remarks>
 		/// <para>The initial value of the <see cref="DigestAlgorithm"/> will be set to
-		/// <see cref="MimeKit.Cryptography.DigestAlgorithm.Sha256"/> and both the
+		/// <see cref="DigestAlgorithm.Sha256"/> and both the
 		/// <see cref="SignedAttributes"/> and <see cref="UnsignedAttributes"/> properties
 		/// will be initialized to empty tables.</para>
 		/// </remarks>
@@ -131,11 +131,11 @@ namespace MimeKit.Cryptography {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.CmsSigner"/> class.
+		/// Initialize a new instance of the <see cref="CmsSigner"/> class.
 		/// </summary>
 		/// <remarks>
-		/// <para>The initial value of the <see cref="MimeKit.Cryptography.DigestAlgorithm"/> will
-		/// be set to <see cref="MimeKit.Cryptography.DigestAlgorithm.Sha256"/> and both the
+		/// <para>The initial value of the <see cref="DigestAlgorithm"/> will
+		/// be set to <see cref="DigestAlgorithm.Sha256"/> and both the
 		/// <see cref="SignedAttributes"/> and <see cref="UnsignedAttributes"/> properties will be
 		/// initialized to empty tables.</para>
 		/// </remarks>
@@ -218,13 +218,13 @@ namespace MimeKit.Cryptography {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.CmsSigner"/> class.
+		/// Initialize a new instance of the <see cref="CmsSigner"/> class.
 		/// </summary>
 		/// <remarks>
 		/// <para>Creates a new <see cref="CmsSigner"/>, loading the X.509 certificate and private key
 		/// from the specified stream.</para>
-		/// <para>The initial value of the <see cref="MimeKit.Cryptography.DigestAlgorithm"/> will
-		/// be set to <see cref="MimeKit.Cryptography.DigestAlgorithm.Sha256"/> and both the
+		/// <para>The initial value of the <see cref="DigestAlgorithm"/> will
+		/// be set to <see cref="DigestAlgorithm.Sha256"/> and both the
 		/// <see cref="SignedAttributes"/> and <see cref="UnsignedAttributes"/> properties will be
 		/// initialized to empty tables.</para>
 		/// </remarks>
@@ -256,13 +256,13 @@ namespace MimeKit.Cryptography {
 		}
 
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.CmsSigner"/> class.
+		/// Initialize a new instance of the <see cref="CmsSigner"/> class.
 		/// </summary>
 		/// <remarks>
 		/// <para>Creates a new <see cref="CmsSigner"/>, loading the X.509 certificate and private key
 		/// from the specified file.</para>
-		/// <para>The initial value of the <see cref="MimeKit.Cryptography.DigestAlgorithm"/> will
-		/// be set to <see cref="MimeKit.Cryptography.DigestAlgorithm.Sha256"/> and both the
+		/// <para>The initial value of the <see cref="DigestAlgorithm"/> will
+		/// be set to <see cref="DigestAlgorithm.Sha256"/> and both the
 		/// <see cref="SignedAttributes"/> and <see cref="UnsignedAttributes"/> properties will be
 		/// initialized to empty tables.</para>
 		/// </remarks>
@@ -276,8 +276,7 @@ namespace MimeKit.Cryptography {
 		/// </exception>
 		/// <exception cref="System.ArgumentException">
 		/// <para><paramref name="fileName"/> is a zero-length string, contains only white space, or
-		/// contains one or more invalid characters as defined by
-		/// <see cref="System.IO.Path.InvalidPathChars"/>.</para>
+		/// contains one or more invalid characters.</para>
 		/// <para>-or-</para>
 		/// <para><paramref name="fileName"/> does not contain a private key.</para>
 		/// <para>-or-</para>
@@ -309,11 +308,11 @@ namespace MimeKit.Cryptography {
 
 #if !NETSTANDARD1_3 && !NETSTANDARD1_6
 		/// <summary>
-		/// Initializes a new instance of the <see cref="MimeKit.Cryptography.CmsSigner"/> class.
+		/// Initialize a new instance of the <see cref="CmsSigner"/> class.
 		/// </summary>
 		/// <remarks>
-		/// <para>The initial value of the <see cref="MimeKit.Cryptography.DigestAlgorithm"/> will
-		/// be set to <see cref="MimeKit.Cryptography.DigestAlgorithm.Sha256"/> and both the
+		/// <para>The initial value of the <see cref="DigestAlgorithm"/> will
+		/// be set to <see cref="DigestAlgorithm.Sha256"/> and both the
 		/// <see cref="SignedAttributes"/> and <see cref="UnsignedAttributes"/> properties will be
 		/// initialized to empty tables.</para>
 		/// </remarks>
