@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -80,12 +80,12 @@ namespace UnitTests.Text {
 		[Test]
 		public void TestSimpleTextToFlowed ()
 		{
-			string expected = "> Thou art a villainous ill-breeding spongy dizzy-eyed reeky elf-skinned " + Environment.NewLine +
-				">  pigeon-egg!" + Environment.NewLine +
+			string expected = "> Thou art a villainous ill-breeding spongy dizzy-eyed reeky elf-skinned  " + Environment.NewLine +
+				"> pigeon-egg!" + Environment.NewLine +
 				">> Thou artless swag-bellied milk-livered dismal-dreaming idle-headed scut!" + Environment.NewLine +
 				">>> Thou errant folly-fallen spleeny reeling-ripe unmuzzled ratsbane!" + Environment.NewLine +
-				">>>> Henceforth, the coding style is to be strictly enforced, including " + Environment.NewLine +
-				">>>>  the use of only upper case." + Environment.NewLine +
+				">>>> Henceforth, the coding style is to be strictly enforced, including the  " + Environment.NewLine +
+				">>>> use of only upper case." + Environment.NewLine +
 				">>>>> I've noticed a lack of adherence to the coding styles, of late." + Environment.NewLine +
 				">>>>>> Any complaints?" + Environment.NewLine;
 			string text = "> Thou art a villainous ill-breeding spongy dizzy-eyed reeky elf-skinned pigeon-egg!" + Environment.NewLine +
@@ -144,7 +144,7 @@ namespace UnitTests.Text {
 		[Test]
 		public void TestFlowingLongLines ()
 		{
-			string text = "But, soft! what light through yonder window breaks? " +
+			const string text = "But, soft! what light through yonder window breaks? " +
 				"It is the east, and Juliet is the sun. " +
 				"Arise, fair sun, and kill the envious moon, " +
 				"Who is already sick and pale with grief, " +
@@ -167,38 +167,92 @@ namespace UnitTests.Text {
 				"That birds would sing and think it were not night. " +
 				"See, how she leans her cheek upon her hand! " +
 				"O, that I were a glove upon that hand, " +
-				"That I might touch that cheek!" + Environment.NewLine;
-			string expected = "But, soft! what light through yonder window breaks? " +
-				"It is the east, " + Environment.NewLine + " and Juliet is the sun. " +
-				"Arise, fair sun, and kill the envious moon, " + Environment.NewLine + " " +
-				"Who is already sick and pale with grief, " +
-				"That thou her maid art far " + Environment.NewLine + " more fair than she: " +
-				"Be not her maid, since she is envious; " +
-				"Her vestal " + Environment.NewLine + " livery is but sick and green " +
-				"And none but fools do wear it; cast " + Environment.NewLine + "it off. " + // this looks like a bug
-				"It is my lady, O, it is my love! " +
-				"O, that she knew she were! " + Environment.NewLine + " " +
-				"She speaks yet she says nothing: what of that? " +
-				"Her eye discourses; " + Environment.NewLine + " I will answer it. " +
-				"I am too bold, 'tis not to me she speaks: " +
-				"Two of " + Environment.NewLine + " the fairest stars in all the heaven, " +
-				"Having some business, do entreat " + Environment.NewLine + " her eyes " +
-				"To twinkle in their spheres till they return. " +
-				"What if her " + Environment.NewLine + " eyes were there, they in her head? " +
-				"The brightness of her cheek would " + Environment.NewLine + " shame those stars, " +
-				"As daylight doth a lamp; her eyes in heaven " +
-				"Would " + Environment.NewLine + " through the airy region stream so bright " +
-				"That birds would sing and " + Environment.NewLine + " think it were not night. " +
-				"See, how she leans her cheek upon her hand! " + Environment.NewLine + " " +
-				"O, that I were a glove upon that hand, " +
-				"That I might touch that cheek!" + Environment.NewLine;
+				"That I might touch that cheek!\n";
+			string expected = @"But, soft! what light through yonder window breaks? It is the east, and  
+Juliet is the sun. Arise, fair sun, and kill the envious moon, Who is  
+already sick and pale with grief, That thou her maid art far more fair than  
+she: Be not her maid, since she is envious; Her vestal livery is but sick  
+and green And none but fools do wear it; cast it off. It is my lady, O, it  
+is my love! O, that she knew she were! She speaks yet she says nothing: what  
+of that? Her eye discourses; I will answer it. I am too bold, 'tis not to me  
+she speaks: Two of the fairest stars in all the heaven, Having some  
+business, do entreat her eyes To twinkle in their spheres till they return.  
+What if her eyes were there, they in her head? The brightness of her cheek  
+would shame those stars, As daylight doth a lamp; her eyes in heaven Would  
+through the airy region stream so bright That birds would sing and think it  
+were not night. See, how she leans her cheek upon her hand! O, that I were a  
+glove upon that hand, That I might touch that cheek!
+".Replace ("\r\n", "\n");
 			TextConverter converter = new TextToFlowed ();
-			string result = converter.Convert (text);
+			string result = converter.Convert (text).Replace ("\r\n", "\n");
 
 			Assert.AreEqual (expected, result);
 
-			converter = new FlowedToText (); // { DeleteSpace = true };
-			result = converter.Convert (expected);
+			converter = new FlowedToText () { DeleteSpace = true };
+			result = converter.Convert (expected).Replace ("\r\n", "\n");
+
+			Assert.AreEqual (text, result);
+		}
+
+		[Test]
+		public void TestFlowingLongQuotedLines ()
+		{
+			const string text = "A passage from Shakespear's Romeo + Juliet:\n" +
+				"> Begin quote\n" +
+				">> But, soft! what light through yonder window breaks? " +
+				"It is the east, and Juliet is the sun. " +
+				"Arise, fair sun, and kill the envious moon, " +
+				"Who is already sick and pale with grief, " +
+				"That thou her maid art far more fair than she: " +
+				"Be not her maid, since she is envious; " +
+				"Her vestal livery is but sick and green " +
+				"And none but fools do wear it; cast it off. " +
+				"It is my lady, O, it is my love! " +
+				"O, that she knew she were! " +
+				"She speaks yet she says nothing: what of that? " +
+				"Her eye discourses; I will answer it. " +
+				"I am too bold, 'tis not to me she speaks: " +
+				"Two of the fairest stars in all the heaven, " +
+				"Having some business, do entreat her eyes " +
+				"To twinkle in their spheres till they return. " +
+				"What if her eyes were there, they in her head? " +
+				"The brightness of her cheek would shame those stars, " +
+				"As daylight doth a lamp; her eyes in heaven " +
+				"Would through the airy region stream so bright " +
+				"That birds would sing and think it were not night. " +
+				"See, how she leans her cheek upon her hand! " +
+				"O, that I were a glove upon that hand, " +
+				"That I might touch that cheek!\n" +
+				"> End quote\n\n" +
+				"Did that flow correctly?\n";
+			string expected = @"A passage from Shakespear's Romeo + Juliet:
+> Begin quote
+>> But, soft! what light through yonder window breaks? It is the east, and  
+>> Juliet is the sun. Arise, fair sun, and kill the envious moon, Who is  
+>> already sick and pale with grief, That thou her maid art far more fair  
+>> than she: Be not her maid, since she is envious; Her vestal livery is but  
+>> sick and green And none but fools do wear it; cast it off. It is my lady,  
+>> O, it is my love! O, that she knew she were! She speaks yet she says  
+>> nothing: what of that? Her eye discourses; I will answer it. I am too  
+>> bold, 'tis not to me she speaks: Two of the fairest stars in all the  
+>> heaven, Having some business, do entreat her eyes To twinkle in their  
+>> spheres till they return. What if her eyes were there, they in her head?  
+>> The brightness of her cheek would shame those stars, As daylight doth a  
+>> lamp; her eyes in heaven Would through the airy region stream so bright  
+>> That birds would sing and think it were not night. See, how she leans her  
+>> cheek upon her hand! O, that I were a glove upon that hand, That I might  
+>> touch that cheek!
+> End quote
+
+Did that flow correctly?
+".Replace ("\r\n", "\n");
+			TextConverter converter = new TextToFlowed ();
+			string result = converter.Convert (text).Replace ("\r\n", "\n");
+
+			Assert.AreEqual (expected, result);
+
+			converter = new FlowedToText () { DeleteSpace = true };
+			result = converter.Convert (expected).Replace ("\r\n", "\n");
 
 			Assert.AreEqual (text, result);
 		}

@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -67,7 +67,7 @@ namespace MimeKit.Cryptography {
 		protected AsymmetricKeyParameter GetPublicKey (string txt)
 		{
 			AsymmetricKeyParameter pubkey;
-			string k = null, p = null;
+			string k = "rsa", p = null;
 			int index = 0;
 
 			if (txt == null)
@@ -117,7 +117,7 @@ namespace MimeKit.Cryptography {
 				index++;
 			}
 
-			if (k != null && p != null) {
+			if (p != null) {
 				if (k == "ed25519") {
 					var decoded = Convert.FromBase64String (p);
 

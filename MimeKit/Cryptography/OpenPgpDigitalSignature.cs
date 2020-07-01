@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -25,6 +25,7 @@
 //
 
 using System;
+using System.Globalization;
 
 using Org.BouncyCastle.Bcpg.OpenPgp;
 
@@ -125,7 +126,7 @@ namespace MimeKit.Cryptography {
 				throw vex;
 
 			if (SignerCertificate == null) {
-				var message = string.Format ("Failed to verify digital signature: no public key found for {0:X8}", (int) Signature.KeyId);
+				var message = string.Format (CultureInfo.InvariantCulture, "Failed to verify digital signature: no public key found for {0:X8}", (int) Signature.KeyId);
 				vex = new DigitalSignatureVerifyException (Signature.KeyId, message);
 				throw vex;
 			}

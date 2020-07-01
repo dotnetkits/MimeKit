@@ -4,7 +4,7 @@
 // Authors: Jeffrey Stedfast <jestedfa@microsoft.com>
 //          Thomas Hansen <thomas@servergardens.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@ using System.Text;
 using System.Net.Http;
 using System.Threading;
 using System.Diagnostics;
+using System.Globalization;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 
@@ -411,12 +412,14 @@ namespace MimeKit.Cryptography {
 		}
 
 		/// <summary>
-		/// Helper method to turn a bunch of byte data, into a string. Useful for
-		/// among other things generating fingerprints.
+		/// Hex encode an array of bytes.
 		/// </summary>
-		/// <param name="data">Byte array that should be turned into string representation.</param>
-		/// <returns>Hexa encoded results from specified input data.</returns>
-		public static string HexEncode (byte[] data)
+		/// <remarks>
+		/// This method is used to hex-encode the PGP key fingerprints.
+		/// </remarks>
+		/// <param name="data">The data to encode.</param>
+		/// <returns>A string representing the hex-encoded data.</returns>
+		static string HexEncode (byte[] data)
 		{
 			var fingerprint = new StringBuilder ();
 
@@ -577,7 +580,7 @@ namespace MimeKit.Cryptography {
 			}
 
 			uri.Path = "/pks/lookup";
-			uri.Query = string.Format ("op=get&search=0x{0:X}", keyId);
+			uri.Query = string.Format (CultureInfo.InvariantCulture, "op=get&search=0x{0:X}", keyId);
 
 			using (var stream = new MemoryBlockStream ()) {
 				using (var filtered = new FilteredStream (stream)) {

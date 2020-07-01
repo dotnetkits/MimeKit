@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@ using System;
 using System.IO;
 using System.Text;
 using System.Linq;
+using System.Globalization;
 
 using MimeKit;
 using MimeKit.IO;
@@ -783,7 +784,7 @@ namespace UnitTests.Tnef {
 						isText = true;
 					} else if (part.FileName == "Untitled Attachment") {
 						// special case for winmail.tnef and christmas.tnef
-						fileName = string.Format ("Untitled Attachment.{0}", untitled++);
+						fileName = string.Format (CultureInfo.InvariantCulture, "Untitled Attachment.{0}", untitled++);
 					} else {
 						var extension = Path.GetExtension (part.FileName);
 

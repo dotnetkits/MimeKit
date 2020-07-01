@@ -3,7 +3,7 @@
 //
 // Author: Jeffrey Stedfast <jestedfa@microsoft.com>
 //
-// Copyright (c) 2013-2020 Xamarin Inc. (www.xamarin.com)
+// Copyright (c) 2013-2020 .NET Foundation and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Globalization;
 
 using NUnit.Framework;
 
@@ -49,7 +50,7 @@ namespace UnitTests {
 				var parser = new MimeParser (stream, MimeFormat.Mbox);
 
 				while (!parser.IsEndOfStream) {
-					var filename = string.Format ("jwz.body.{0}.html", index);
+					var filename = string.Format (CultureInfo.InvariantCulture, "jwz.body.{0}.html", index);
 					var path = Path.Combine (dataDir, filename);
 					var message = parser.ParseMessage ();
 					string expected, actual;
